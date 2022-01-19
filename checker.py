@@ -8,7 +8,7 @@ import psutil
 import json
 
 configs = {}
-with open("configs.json", "r") as file:
+with open(os.path.abspath(os.path.join('.', 'configs.json')), "r") as file:
     configs = json.load(file)
 TIMEOUT = float(configs['TIMEOUT'])
 TIMEOUT_COMPILE = float(configs['TIMEOUT_COMPILE'])

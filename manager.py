@@ -86,7 +86,7 @@ def before_end(folder):
 DEFAULT_NAME = 'program'
 
 langs_configs = []
-with open("langs.json", "r") as file:
+with open(os.path.abspath(os.path.join('.', 'langs.json')), "r") as file:
     langs_configs = json.load(file)
 langs = list(langs_configs.keys())
 
