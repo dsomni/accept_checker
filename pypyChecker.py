@@ -1,6 +1,8 @@
 from os import path
 
-pathToCompiler = path.abspath(path.join('.', 'pypyCompiler', 'pypy3.exe'))
+CURRENT_DIR = path.dirname(path.abspath(__file__))
+
+pathToCompiler = path.abspath(path.join(CURRENT_DIR, 'pypyCompiler', 'pypy3.exe'))
 
 extension_compile = 'py'
 extension_run = 'py'

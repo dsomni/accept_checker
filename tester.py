@@ -11,6 +11,7 @@ because cpp compiler do not stop program after
 throwing a ZeroDevision exception
 
 '''
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 tests0 = [
     ["1", "1"],
@@ -55,7 +56,7 @@ checker_tests = [
 ]
 
 langs_configs = []
-with open(os.path.abspath(os.path.join('.', 'langs.json')), "r") as file:
+with open(os.path.abspath(os.path.join(CURRENT_DIR, 'langs.json')), "r") as file:
     langs_configs = json.load(file)
 langs = list(langs_configs.keys())
 

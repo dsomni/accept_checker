@@ -7,8 +7,10 @@ import importlib.util
 import psutil
 import json
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 configs = {}
-with open(os.path.abspath(os.path.join('.', 'configs.json')), "r") as file:
+with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
     configs = json.load(file)
 TIMEOUT = float(configs['TIMEOUT'])
 TIMEOUT_COMPILE = float(configs['TIMEOUT_COMPILE'])

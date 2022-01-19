@@ -7,6 +7,8 @@ import shutil
 import time
 import json
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def create_folder(folder):
     try:
@@ -86,15 +88,15 @@ def before_end(folder):
 DEFAULT_NAME = 'program'
 
 langs_configs = []
-with open(os.path.abspath(os.path.join('.', 'langs.json')), "r") as file:
+with open(os.path.abspath(os.path.join(CURRENT_DIR, 'langs.json')), "r") as file:
     langs_configs = json.load(file)
 langs = list(langs_configs.keys())
 
 
 def run(lang, program_text, tests, should_before_end=True, should_print_command=False):
 
-    create_folder(os.path.abspath(os.path.join('.', 'logs')))
-    folder = os.path.abspath(os.path.join('.', 'logs', f'{lang}_logs'))
+    create_folder(os.path.abspath(os.path.join(CURRENT_DIR, 'logs')))
+    folder = os.path.abspath(os.path.join(CURRENT_DIR, 'logs', f'{lang}_logs'))
     results = []
     tests_length = len(tests)
 
@@ -110,7 +112,7 @@ def run(lang, program_text, tests, should_before_end=True, should_print_command=
     results_folder_path = get_results_path(folder)
 
     ''' Setup command '''
-    command = ['python', os.path.abspath(os.path.join('.', 'checker.py')), module_name, folder, program_name,
+    command = ['python', os.path.abspath(os.path.join(CURRENT_DIR, 'checker.py')), module_name, folder, program_name,
                 tests_folder_path, str(tests_length), results_folder_path]
     if should_print_command:
         print(' '.join(command))

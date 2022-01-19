@@ -1,7 +1,9 @@
 from os import path
 
+CURRENT_DIR = path.dirname(path.abspath(__file__))
+
 pathToCompiler = path.abspath(
-    path.join('.', 'pascalCompiler', 'pabcnetcclear.exe'))
+    path.join(CURRENT_DIR, 'pascalCompiler', 'pabcnetcclear.exe'))
 
 extension_compile = 'pas'
 extension_run = 'exe'
