@@ -1,1 +1,0 @@
-var i:integer; Begin readln(i); writeln(i+1); End.
