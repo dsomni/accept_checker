@@ -1,5 +1,3 @@
-
-
 import importlib.util
 import subprocess
 import os
@@ -19,6 +17,7 @@ def create_folder(folder):
 
 def check_module(module_name):
   module_spec = importlib.util.find_spec(module_name)
+  print(module_spec)
   if module_spec is None:
     return None
   else:
@@ -34,9 +33,10 @@ def import_module_from_spec(module_spec):
 def get_module(lang):
   global langs_configs
   module_name = langs_configs.get(lang)
+  # print(module_name)
   module_spec = check_module(module_name)
-  if module_spec:
-    return module_name, module_spec
+  # if module_spec:
+  return module_name, module_spec
 
 
 def get_extension(module_spec):
@@ -133,7 +133,7 @@ def run(lang, program_text, tests, should_before_end=True, should_print_command=
 
   if should_before_end:
     before_end(folder)
-  return results
+  return sorted(results, key=lambda result: result.index)
 
 
 # results = run('cpp', '#include <iostream>\n using namespace std;\nint main()\n{\nint a; cin >> a; cout << 1/a;\nreturn 0;\n}', [['0', '1']], False, False)
