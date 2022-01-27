@@ -8,6 +8,7 @@ import psutil
 import json
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(CURRENT_DIR)
 
 configs = {}
 with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
