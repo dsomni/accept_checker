@@ -1,13 +1,16 @@
 from os import path
+import json
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 
-pathToCompiler = path.abspath(
-  path.join(CURRENT_DIR, 'pascalCompiler', 'pabcnetcclear.exe'))
+with open(path.abspath(path.join(CURRENT_DIR, 'configs.json')), "r") as file:
+    configs = json.load(file)
 
 extension_compile = 'pas'
 extension_run = 'exe'
+running_offset = configs["RUNNING_OFFSET"]["PASCAL"]
 
+pathToCompiler = configs["COMPILER_PATHES"]['PASCAL']
 
 def cmd_compile(folder_path, program_name):
   return [pathToCompiler, path.abspath(path.join(folder_path, f'{program_name}.{extension_compile}'))]

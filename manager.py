@@ -34,8 +34,7 @@ def import_module_from_spec(module_spec):
 
 def get_module(lang):
     global langs_configs
-    module_name = langs_configs.get(lang)
-    # print(module_name)
+    module_name = langs_configs[lang]
     module_spec = check_module(module_name)
     # if module_spec:
     return module_name, module_spec
@@ -93,9 +92,9 @@ def before_end(folder):
 
 DEFAULT_NAME = 'program'
 
-langs_configs = []
-with open(os.path.abspath(os.path.join(CURRENT_DIR, 'langs.json')), "r") as file:
-    langs_configs = json.load(file)
+# langs_configs = []
+with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
+    langs_configs = json.load(file)["LANGS"]
 langs = list(langs_configs.keys())
 
 
@@ -112,6 +111,8 @@ def run(lang, program_text, tests, should_before_end=True, should_print_command=
     ''' Setup files '''
     module_name, module_spec = get_module(lang)
     extension = get_extension(module_spec)
+
+
     program_name = DEFAULT_NAME
     create_program_file(folder, program_name, extension, program_text)
     tests_folder_path = setup_tests(folder, tests)

@@ -41,10 +41,10 @@ def import_module_from_spec(module_spec):
   return module
 
 
-def setup_cmd(module_name, folder, program_name):
+def setup(module_name, folder, program_name):
   module_spec = check_module(module_name)
   module = import_module_from_spec(module_spec)
-  return [module.cmd_compile(folder, program_name), module.cmd_run(folder, program_name)]
+  return (module.cmd_compile(folder, program_name), module.cmd_run(folder, program_name), module.running_offset)
 
 
 def compile_program(folder, cmd_compile):
@@ -76,7 +76,7 @@ def kill_process_tree(pid):
   except:
     pass
 
-def run_program(test_input, idx, folder, cmd_run):
+def run_program(test_input, idx, folder, cmd_run, running_offset):
   with open(os.path.abspath(os.path.join(folder, f'out{idx}.log')), 'w') as out, open(os.path.abspath(os.path.join(folder, f'err{idx}.log')), 'w') as err:
     program_call = subprocess.Popen(
       cmd_run,
@@ -85,7 +85,7 @@ def run_program(test_input, idx, folder, cmd_run):
       text=True)
     try:
       program_call.communicate(
-        input=test_input, timeout=TIMEOUT)
+        input=test_input, timeout=TIMEOUT + running_offset)
       return program_call.poll()  # 0 - OK, 1 - RE
     # except subprocess.TimeoutExpired:
     except Exception as e:
@@ -124,9 +124,9 @@ def generate_result(code, idx):
     return [idx+1, 'TL', 'Time Limit']
 
 
-def check_test(test, idx, folder, cmd_run, results_folder):
+def check_test(test, idx, folder, cmd_run, results_folder, running_offset):
   test_input, test_output = test
-  code = run_program(test_input, idx, folder, cmd_run)
+  code = run_program(test_input, idx, folder, cmd_run, running_offset)
   if code == 0:
     code = compare_results(test_output, idx, folder)
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
   try:
     ''' Get cmd commands '''
-    cmd_compile, cmd_run = setup_cmd(module_name, folder, program_name)
+    cmd_compile, cmd_run, running_offset = setup(module_name, folder, program_name)
 
     ''' Compilation '''
     code = compile_program(folder, cmd_compile)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     processes = []
     for index, test in enumerate(tests):
       process = Process(target=check_test, args=(
-        test, index, folder, cmd_run, results_folder))
+        test, index, folder, cmd_run, results_folder, running_offset))
       processes.append(process)
       process.start()
     for process in processes:

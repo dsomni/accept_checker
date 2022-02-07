@@ -1,4 +1,24 @@
 {
   "TIMEOUT": "1.3",
-  "TIMEOUT_COMPILE": "5"
+  "TIMEOUT_COMPILE": "5",
+  "LANGS": {
+    "java": "javaChecker",
+    "python": "pythonChecker",
+    "pypy": "pypyChecker",
+    "cpp": "cppChecker",
+    "pascal": "pascalChecker"
+  },
+  "COMPILER_PATHES": {
+    "PYPY": "/home/melaveetha/Programs/pypy/bin/pypy3",
+    "CPP": "g++",
+    "PASCAL": "pabcnetc",
+    "JAVA": "javac"
+  },
+  "RUNNING_OFFSET": {
+    "CPP": 0,
+    "PYTHON": 0,
+    "PASCAL": 1650,
+    "JAVA": 9999,
+    "PYPY": 0
+  }
 }

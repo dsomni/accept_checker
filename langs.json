@@ -1,7 +1,0 @@
-{
-  "java": "javaChecker",
-  "python": "pythonChecker",
-  "pypy": "pypyChecker",
-  "cpp": "cppChecker",
-  "pascal": "pascalChecker"
-}
