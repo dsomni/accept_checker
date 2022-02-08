@@ -65,6 +65,11 @@ def get_results_path(folder):
     create_folder(path)
     return path
 
+def get_output_path(folder):
+    path = os.path.abspath(os.path.join(folder, 'program_output'))
+    create_folder(path)
+    return path
+
 
 def get_results(results_folder_path, tests_length):
     results = []
@@ -78,6 +83,13 @@ def get_results(results_folder_path, tests_length):
             })
     return results
 
+def get_output(output_folder_path, tests_length):
+    outputs = []
+    for i in range(tests_length):
+        with open(os.path.abspath(os.path.join(results_folder_path, f'out{i}.log')), 'r') as file:
+            output = '\n'.join(list(map(lambda x: x.strip(), file.readlines())))
+            outputs.append(output)
+    return outputs
 
 def before_end(folder):
     try:
@@ -98,7 +110,7 @@ with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as fi
 langs = list(langs_configs.keys())
 
 
-def run(lang, program_text, tests, should_before_end=True, should_print_command=False):
+def run(lang, program_text, tests, should_before_end=True, should_print_command=False, should_collect_output=False):
 
     create_folder(os.path.abspath(os.path.join(CURRENT_DIR, 'logs')))
     folder = os.path.abspath(os.path.join(CURRENT_DIR, 'logs', f'{lang}_logs'))
@@ -136,9 +148,14 @@ def run(lang, program_text, tests, should_before_end=True, should_print_command=
     if (code == 0):
         results = get_results(results_folder_path, tests_length)
 
+    ''' Collect program output '''
+    outputs = []
+    if should_collect_output:
+        outputs = get_output(folder, tests_length)
+
     if should_before_end:
         before_end(folder)
-    return sorted(results, key=lambda result: result['index'])
+    return [sorted(results, key=lambda result: result['index']), outputs]
 
 
 # results = run('cpp', '#include <iostream>\n using namespace std;\nint main()\n{\nint a; cin >> a; cout << 1/a;\nreturn 0;\n}', [['0', '1']], False, False)
