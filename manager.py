@@ -83,7 +83,7 @@ def get_results(results_folder_path, tests_length):
             })
     return results
 
-def get_output(output_folder_path, tests_length):
+def get_output(results_folder_path, tests_length):
     outputs = []
     for i in range(tests_length):
         with open(os.path.abspath(os.path.join(results_folder_path, f'out{i}.log')), 'r') as file:
