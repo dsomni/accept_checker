@@ -20,5 +20,9 @@
     "PASCAL": 1650,
     "JAVA": 9999,
     "PYPY": 0
+  },
+  "database": {
+    "connection_string_local": "mongodb://localhost:27017/",
+    "connection_string": "mongodb+srv://username:veryhardpassword@acceptcluster.wlv0h.mongodb.net/Accept?retryWrites=true&w=majority"
   }
 }

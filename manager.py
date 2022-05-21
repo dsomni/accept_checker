@@ -2,7 +2,7 @@ import importlib.util
 import json
 import os
 
-from accept_checker.checker import checker
+from checker import checker
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
@@ -50,14 +50,10 @@ def delete_program_file(program_path):
 FOLDER = "programs"
 
 
-async def run(attempt_spec: str, language, collection) -> bool:
-
-    attempt = await collection.find_one({"spec": attempt_spec})
-    if not attempt:
-        return False
+async def run(attempt, language, collection) -> bool:
 
     tests = attempt["results"]
-    lang = language.shortName
+    lang = language["shortName"]
     program_name = attempt["spec"]
 
     """ Setup files """
@@ -68,6 +64,6 @@ async def run(attempt_spec: str, language, collection) -> bool:
     folder_path = os.path.abspath(os.path.join(CURRENT_DIR, FOLDER))
 
     """ Run checker """
-    result = await checker(attempt_spec, module_spec, folder_path, program_name, tests, collection)
+    result = await checker(attempt["spec"], module_spec, folder_path, program_name, tests, collection)
     delete_program_file(program_path)
     return result
