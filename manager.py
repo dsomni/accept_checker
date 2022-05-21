@@ -1,20 +1,12 @@
-import sys
 import importlib.util
-import subprocess
-import os
-import shutil
-import time
 import json
+import os
+
+from accept_checker.checker import checker
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(CURRENT_DIR)
-
-
-def create_folder(folder):
-    try:
-        os.mkdir(folder)
-    except Exception as e:
-        pass
+with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
+    langs_configs = json.load(file)["LANGS"]
 
 
 def check_module(module_name):
@@ -36,7 +28,6 @@ def get_module(lang):
     global langs_configs
     module_name = langs_configs[lang]
     module_spec = check_module(module_name)
-    # if module_spec:
     return module_name, module_spec
 
 
@@ -46,117 +37,37 @@ def get_extension(module_spec):
 
 
 def create_program_file(folder, program_name, extension, programText):
-    with open(os.path.abspath(os.path.join(folder, f'{program_name}.{extension}')), 'w') as program:
+    path = os.path.abspath(os.path.join(CURRENT_DIR, folder, f"{program_name}.{extension}"))
+    with open(path, "w") as program:
         program.write(programText)
-
-
-def setup_tests(folder, tests):
-    path = os.path.abspath(os.path.join(folder, 'tests'))
-    create_folder(path)
-    for i in range(len(tests)):
-        with open(os.path.abspath(os.path.join(path, f'input{i}.log')), 'w') as inp, open(os.path.abspath(os.path.join(path, f'output{i}.log')), 'w') as out:
-            inp.write(tests[i][0])
-            out.write(tests[i][1])
     return path
 
 
-def get_results_path(folder):
-    path = os.path.abspath(os.path.join(folder, 'results'))
-    create_folder(path)
-    return path
-
-def get_output_path(folder):
-    path = os.path.abspath(os.path.join(folder, 'program_output'))
-    create_folder(path)
-    return path
+def delete_program_file(program_path):
+    os.remove(program_path)
 
 
-def get_results(results_folder_path, tests_length):
-    results = []
-    for i in range(tests_length):
-        with open(os.path.abspath(os.path.join(results_folder_path, str(i))), 'r') as file:
-            result = list(map(lambda x: x.strip(), file.readlines()))
-            results.append({
-                "index": result[0],
-                "result": result[1],
-                "shortResult": result[2]
-            })
-    return results
-
-def get_output(results_folder_path, tests_length):
-    outputs = []
-    for i in range(tests_length):
-        with open(os.path.abspath(os.path.join(results_folder_path, f'out{i}.log')), 'r') as file:
-            output = '\n'.join(list(map(lambda x: x.strip(), file.readlines())))
-            outputs.append(output)
-    return outputs
-
-def before_end(folder):
-    try:
-        shutil.rmtree(folder)
-    except:
-        # delete folder using chroot
-        # time.sleep(1)
-        # shutil.rmtree(folder)
-        pass
-    pass
+FOLDER = "programs"
 
 
-DEFAULT_NAME = 'program'
+async def run(attempt_spec: str, language, collection) -> bool:
 
-# langs_configs = []
-with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
-    langs_configs = json.load(file)["LANGS"]
-langs = list(langs_configs.keys())
+    attempt = await collection.find_one({"spec": attempt_spec})
+    if not attempt:
+        return False
 
+    tests = attempt["results"]
+    lang = language.shortName
+    program_name = attempt["spec"]
 
-def run(lang, program_text, tests, should_before_end=True, should_print_command=False, should_collect_output=False):
-
-    create_folder(os.path.abspath(os.path.join(CURRENT_DIR, 'logs')))
-    folder = os.path.abspath(os.path.join(CURRENT_DIR, 'logs', f'{lang}_logs'))
-    results = []
-    tests_length = len(tests)
-
-    ''' Create a folder '''
-    create_folder(folder)
-
-    ''' Setup files '''
+    """ Setup files """
     module_name, module_spec = get_module(lang)
     extension = get_extension(module_spec)
 
+    program_path = create_program_file(FOLDER, program_name, extension, attempt["programText"])
+    folder_path = os.path.abspath(os.path.join(CURRENT_DIR, FOLDER))
 
-    program_name = DEFAULT_NAME
-    create_program_file(folder, program_name, extension, program_text)
-    tests_folder_path = setup_tests(folder, tests)
-    results_folder_path = get_results_path(folder)
-
-    ''' Setup command '''
-    command = ['python', os.path.abspath(os.path.join(CURRENT_DIR, 'checker.py')), module_name, folder, program_name,
-               tests_folder_path, str(tests_length), results_folder_path]
-    if should_print_command:
-        print(' '.join(command))
-
-    ''' Run checker '''
-    try:
-        checker_process = subprocess.Popen(command)
-        checker_process.wait()
-    except:
-        pass
-
-    ''' Generate results '''
-    code = checker_process.returncode
-    if (code == 0):
-        results = get_results(results_folder_path, tests_length)
-
-    ''' Collect program output '''
-    outputs = []
-    if should_collect_output:
-        outputs = get_output(folder, tests_length)
-
-    if should_before_end:
-        before_end(folder)
-    return [sorted(results, key=lambda result: result['index']), outputs]
-
-
-# results = run('cpp', '#include <iostream>\n using namespace std;\nint main()\n{\nint a; cin >> a; cout << 1/a;\nreturn 0;\n}', [['0', '1']], False, False)
-# print(results)
+    """ Run checker """
+    result = await checker(attempt_spec, module_spec, folder_path, program_name, tests, collection)
+    delete_program_file(program_path)
+    return result
