@@ -33,14 +33,14 @@ def compile_program(cmd_compile, logs, compile_offset):
         code = subprocess.run(
             cmd_compile, capture_output=True, timeout=DEFAULT_TIMEOUT_COMPILE + compile_offset, check=True
         )
-        logs.append(f"Compiler output: {code.stdout}")
-        logs.append(f"Compiler error: {code.stderr}")
+        if code.stderr:
+            logs.append(f"Compiler error: {code.stderr}")
         return 0
     except subprocess.CalledProcessError as e:
-        logs.append(f"Compiler output: {e.stdout}")
         logs.append(f"Compiler error: {e.stderr}")
         return 1
     except Exception as e:
+        logs.append(f"Error during compilation: {str(e)}")
         return 1
 
 
@@ -147,4 +147,4 @@ def checker(
         return (results, logs)
     except Exception as e:
         print("Exception in Checker", e)
-        return (generate_results_se(results), [str(e)])
+        return (generate_results_se(results), [f"Checker Error: {str(e)}"])

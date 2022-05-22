@@ -19,33 +19,47 @@ async def take_one(collection):
     return queue_item
 
 
-async def listener():
+async def fetch_languages():
+    # print("FETCH LANGUAGES")
     languages_cursor = database["language"].find({})
     languages = dict()
     async for language in languages_cursor:
         languages[language["spec"]] = language
+    return languages
+
+
+async def listener():
+    languages = await fetch_languages()
 
     with pool.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # start = datetime.now()
         # processes = []
+        refresh_languages = False
         while True:
             try:
                 queue_item = await take_one(database["pending_task_attempt"])
+
                 if not queue_item:
                     # for process in processes:
                     #     if process.done():
                     #         processes.remove(process)
                     # if len(processes) == 0:
                     #     print(datetime.now() - start)
+
+                    refresh_languages = True
                     sleep(SLEEP_TIMEOUT)
                     continue
+                if refresh_languages:
+                    refresh_languages = False
+                    languages = await fetch_languages()
                 attempt_spec = queue_item["attempt"]
                 task_type = queue_item["taskType"]
                 check_type = queue_item["taskCheckType"]
                 attempt = await database["attempt"].find_one({"spec": attempt_spec})
                 if task_type == 0:
                     process = executor.submit(run_tests_checker, attempt, languages[attempt["language"]])
-                    # processes.append(process)
+                    if attempt["language"] == 4:  # java
+                        process.result()
 
             except BaseException as e:
                 print(e)
