@@ -9,12 +9,17 @@ with open(path.abspath(path.join(CURRENT_DIR, "configs.json")), "r") as file:
 extension_compile = "py"
 extension_run = "py"
 
-running_offset = configs["RUNNING_OFFSET"]["PYTHON"]
+pathToCompiler = configs["COMPILER_PATHS"]["PYPY"]
 
 
 def cmd_compile(folder_path, program_name):
-    return ["python", "-m", "py_compile", path.abspath(path.join(folder_path, f"{program_name}.{extension_compile}"))]
+    return [
+        pathToCompiler,
+        "-m",
+        "py_compile",
+        path.abspath(path.join(folder_path, f"{program_name}.{extension_compile}")),
+    ]
 
 
 def cmd_run(folder_path, program_name):
-    return ["python", path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]
+    return [pathToCompiler, path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]

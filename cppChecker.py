@@ -8,9 +8,8 @@ with open(path.abspath(path.join(CURRENT_DIR, "configs.json")), "r") as file:
 
 extension_compile = "cpp"
 extension_run = "exe"
-running_offset = configs["RUNNING_OFFSET"]["CPP"]
 
-pathToCompiler = configs["COMPILER_PATHES"]["CPP"]
+pathToCompiler = configs["COMPILER_PATHS"]["CPP"]
 
 
 def cmd_compile(folder_path, program_name):

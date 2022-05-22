@@ -6,12 +6,10 @@ CURRENT_DIR = path.dirname(path.abspath(__file__))
 with open(path.abspath(path.join(CURRENT_DIR, "configs.json")), "r") as file:
     configs = json.load(file)
 
-extension_compile = "java"
-extension_run = "java"
+extension_compile = "pas"
+extension_run = "exe"
 
-running_offset = configs["RUNNING_OFFSET"]["JAVA"]
-
-pathToCompiler = configs["COMPILER_PATHES"]["JAVA"]
+pathToCompiler = configs["COMPILER_PATHS"]["PASCAL"]
 
 
 def cmd_compile(folder_path, program_name):
@@ -19,4 +17,4 @@ def cmd_compile(folder_path, program_name):
 
 
 def cmd_run(folder_path, program_name):
-    return ["java", path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]
+    return [path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]
