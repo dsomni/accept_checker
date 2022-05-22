@@ -78,14 +78,18 @@ def kill_process_tree(pid):
         pass
 
 
-def run_program(test_input, test_output, cmd_run, run_offset):
+def run_program(test_input, test_output, cmd_run, run_offset, constraints_time):
     process = None
     verdict = 5
     try:
         process = subprocess.Popen(
             cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        result, errs = process.communicate(input=test_input, timeout=DEFAULT_TIMEOUT + run_offset)
+        timeout = DEFAULT_TIMEOUT + run_offset
+        if constraints_time:
+            timeout = constraints_time + run_offset
+
+        result, errs = process.communicate(input=test_input, timeout=timeout)
         if process.returncode != 0:
             verdict = 4  # RE
         elif compare_results(result, test_output):
@@ -103,14 +107,20 @@ def run_program(test_input, test_output, cmd_run, run_offset):
     return verdict
 
 
-def check_test(testResult, idx, cmd_run, running_offset):
+def check_test(testResult, idx, cmd_run, running_offset, constraints_time):
     test_input = testResult["test"]["inputData"]
     test_output = testResult["test"]["outputData"]
-    verdict = run_program(test_input, test_output, cmd_run, running_offset)
+    verdict = run_program(test_input, test_output, cmd_run, running_offset, constraints_time)
     return (idx, verdict)
 
 
-def checker(module_spec, folder_path, program_name, run_offset, compile_offset, tests) -> Tuple[List[int], List[str]]:
+CPU_NUMBER = os.cpu_count() or 0
+MAX_WORKERS = min(16, CPU_NUMBER)
+
+
+def checker(
+    module_spec, folder_path, program_name, run_offset, compile_offset, tests, constraints_time
+) -> Tuple[List[int], List[str]]:
     results = [5] * len(tests)
     try:
         """Get cmd commands"""
@@ -124,9 +134,10 @@ def checker(module_spec, folder_path, program_name, run_offset, compile_offset, 
             return (generate_results_ce(results), logs)
 
         """ Running & Testing """
-        with pool.ThreadPoolExecutor() as executor:
+        with pool.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             processes = [
-                executor.submit(check_test, test, index, cmd_run, run_offset) for index, test in enumerate(tests)
+                executor.submit(check_test, test, index, cmd_run, run_offset, constraints_time)
+                for index, test in enumerate(tests)
             ]
 
             for process in pool.as_completed(processes):

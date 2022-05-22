@@ -7,6 +7,10 @@ import json
 import asyncio
 import concurrent.futures as pool
 
+SLEEP_TIMEOUT = 3
+CPU_NUMBER = os.cpu_count() or 0
+MAX_WORKERS = max(2, int(CPU_NUMBER * 0.6))
+
 
 async def take_one(collection):
     queue_item = await collection.find_one({"examined": None})
@@ -21,19 +25,19 @@ async def listener():
     async for language in languages_cursor:
         languages[language["spec"]] = language
 
-    with pool.ProcessPoolExecutor(max_workers=5) as executor:
-        start = datetime.now()
-        processes = []
+    with pool.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        # start = datetime.now()
+        # processes = []
         while True:
             try:
                 queue_item = await take_one(database["pending_task_attempt"])
                 if not queue_item:
-                    for process in processes:
-                        if process.done():
-                            processes.remove(process)
-                    if len(processes) == 0:
-                        print(datetime.now() - start)
-                    sleep(2)
+                    # for process in processes:
+                    #     if process.done():
+                    #         processes.remove(process)
+                    # if len(processes) == 0:
+                    #     print(datetime.now() - start)
+                    sleep(SLEEP_TIMEOUT)
                     continue
                 attempt_spec = queue_item["attempt"]
                 task_type = queue_item["taskType"]
@@ -41,11 +45,11 @@ async def listener():
                 attempt = await database["attempt"].find_one({"spec": attempt_spec})
                 if task_type == 0:
                     process = executor.submit(run_tests_checker, attempt, languages[attempt["language"]])
-                    processes.append(process)
+                    # processes.append(process)
 
             except BaseException as e:
                 print(e)
-                sleep(2)
+                sleep(SLEEP_TIMEOUT)
 
 
 if __name__ == "__main__":

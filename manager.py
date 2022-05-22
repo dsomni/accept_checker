@@ -116,9 +116,12 @@ async def tests_checker(attempt, language) -> bool:
         collection = database["attempt"]
 
         tests = attempt["results"]
-        # constrains_time = attempt["constrains"]["time"]
+        constraints_time = None
+        constraints = attempt["constraints"]
+        if constraints:
+            constraints_time = constraints["time"]
         lang = language["shortName"]
-        run_offset = language["runOffset"]  # + constrains_time
+        run_offset = language["runOffset"]
         compile_offset = language["compileOffset"]
         spec = attempt["spec"]
 
@@ -132,7 +135,7 @@ async def tests_checker(attempt, language) -> bool:
         is_set = await set_testing(spec, collection)
         if not is_set:
             return False
-        results, logs = checker(module_spec, folder_path, spec, run_offset, compile_offset, tests)
+        results, logs = checker(module_spec, folder_path, spec, run_offset, compile_offset, tests, constraints_time)
         delete_program_folder(folder_path)
 
         await delete_from_pending(spec, database["pending_task_attempt"])
