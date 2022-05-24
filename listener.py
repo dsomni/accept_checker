@@ -1,6 +1,6 @@
 from datetime import datetime
 from time import sleep
-from manager import run_tests_checker
+from manager import run_tests_checker, run_text_checker
 import motor.motor_asyncio
 import os
 import json
@@ -56,10 +56,12 @@ async def listener():
                 task_type = queue_item["taskType"]
                 check_type = queue_item["taskCheckType"]
                 attempt = await database["attempt"].find_one({"spec": attempt_spec})
-                if task_type == 0:
+                if task_type == 0:  # code
                     process = executor.submit(run_tests_checker, attempt, languages[attempt["language"]])
                     if attempt["language"] == 4:  # java
                         process.result()
+                elif task_type == 1:  # text
+                    process = executor.submit(run_text_checker, attempt)
 
             except BaseException as e:
                 print(e)

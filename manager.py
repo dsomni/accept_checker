@@ -1,4 +1,5 @@
 import importlib.util
+from itertools import zip_longest
 import json
 import os
 import shutil
@@ -138,6 +139,7 @@ async def tests_checker(attempt, language) -> bool:
         results, logs = checker(module_spec, folder_path, spec, run_offset, compile_offset, tests, constraints_time)
         delete_program_folder(folder_path)
 
+        """ Save result """
         await delete_from_pending(spec, database["pending_task_attempt"])
         verdict = await save_results(spec, tests, results, logs, collection)
         if not verdict:
@@ -152,6 +154,54 @@ async def tests_checker(attempt, language) -> bool:
         return False
 
 
+def compare_strings(test: str, answer: str) -> int:
+    test_strings = map(lambda x: x.strip(), test.strip().split("\n"))
+    answer_strings = map(lambda x: x.strip(), answer.strip().split("\n"))
+    for t, a in zip_longest(test_strings, answer_strings):
+        if t != a:
+            return 2
+    return 0
+
+
+async def text_checker(attempt) -> bool:
+    try:
+        collection = database["attempt"]
+
+        tests = attempt["results"]
+        spec = attempt["spec"]
+        answers = attempt["textAnswers"]
+        answers_length = len(answers)
+
+        """ Run checker """
+        is_set = await set_testing(spec, collection)
+        if not is_set:
+            return False
+
+        results = []
+        for i, test_result in enumerate(tests):
+            if i >= answers_length:
+                results.append(2)  # WA
+            else:
+                results.append(compare_strings(test_result["test"]["outputData"], answers[i]))
+
+        """ Save result """
+        await delete_from_pending(spec, database["pending_task_attempt"])
+        verdict = await save_results(spec, tests, results, [], collection)
+        if not verdict:
+            return False
+        result = await save_verdict(spec, verdict, database)
+        return result
+
+    except BaseException as e:
+        print("ManagerError: ", e)
+        return False
+
+
 def run_tests_checker(*args):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(tests_checker(*args))
+
+
+def run_text_checker(*args):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(text_checker(*args))
