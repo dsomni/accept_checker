@@ -57,6 +57,12 @@ def generate_results_se(results):
     return results
 
 
+def generate_results_nt(results):
+    for i in range(len(results)):
+        results[i] = 6
+    return results
+
+
 def compare_results(result, test_output):
     result = list(result.strip().split("\n"))
     test_output = list(test_output.split("\n"))
@@ -148,3 +154,131 @@ def checker(
     except Exception as e:
         print("Exception in Checker", e)
         return (generate_results_se(results), [f"Checker Error: {str(e)}"])
+
+
+CHECKER_PASS_OUTPUT = "1"
+INCREASE_TIMEOUT_K = 5
+
+
+def check_output(program_input, program_output, checker_cmd_run, checker_run_offset):
+    process = None
+    verdict = 6
+    log = ""
+    try:
+        process = subprocess.Popen(
+            checker_cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        timeout = DEFAULT_TIMEOUT * INCREASE_TIMEOUT_K + checker_run_offset
+
+        result, errs = process.communicate(input=program_input + "\n" + program_output, timeout=timeout)
+        if process.returncode != 0:
+            verdict = 2  # RE
+            log = f"Error when running custom checker: {errs}"
+        elif compare_results(result, CHECKER_PASS_OUTPUT):
+            verdict = 0
+        else:
+            verdict = 2
+    except subprocess.TimeoutExpired as e:
+        log = f"Custom checker: {str(e)}"
+        verdict = 2  # TL
+    except subprocess.SubprocessError as e:
+        log = f"Error when running custom checker: {str(e)}"
+        verdict = 2  # RE
+    except BaseException as e:
+        log = f"Error when running custom checker: {str(e)}"
+        verdict = 2
+    if process:
+        kill_process_tree(process.pid)
+    return (verdict, log)
+
+
+def check_test_checker(testResult, idx, cmd_run, run_offset, constraints_time, checker_cmd_run, checker_run_offset):
+    test_input = testResult["test"]["inputData"]
+    process = None
+    verdict = 5
+    log = ""
+    try:
+        process = subprocess.Popen(
+            cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        timeout = DEFAULT_TIMEOUT + run_offset
+        if constraints_time:
+            timeout = constraints_time + run_offset
+
+        result, errs = process.communicate(input=test_input, timeout=timeout)
+        if process.returncode != 0:
+            verdict = 4  # RE
+        else:
+            verdict, log = check_output(test_input, result, checker_cmd_run, checker_run_offset)
+    except subprocess.TimeoutExpired as e:
+        verdict = 1  # TL
+    except subprocess.SubprocessError as e:
+        verdict = 4  # RE
+    except BaseException as e:
+        verdict = 5
+    if process:
+        kill_process_tree(process.pid)
+    return (idx, verdict, log)
+
+
+def custom(
+    module_spec,
+    folder_path,
+    program_name,
+    run_offset,
+    compile_offset,
+    tests,
+    constraints_time,
+    checker_module_spec,
+    checker_name,
+    checker_run_offset,
+    checker_compile_offset,
+) -> Tuple[List[int], List[str]]:
+    results = [5] * len(tests)
+    try:
+
+        """Get cmd commands Checker"""
+        checker_cmd_compile, checker_cmd_run = setup(checker_module_spec, folder_path, checker_name)
+
+        logs = []
+
+        """ Compilation Checker"""
+        code = compile_program(checker_cmd_compile, logs, checker_compile_offset)
+        if code == 1:
+            logs.append("Error when compiling custom checker")
+            return (generate_results_nt(results), logs)
+
+        """Get cmd commands"""
+        cmd_compile, cmd_run = setup(module_spec, folder_path, program_name)
+
+        """ Compilation """
+        code = compile_program(cmd_compile, logs, compile_offset)
+        if code == 1:
+            return (generate_results_ce(results), logs)
+
+        """ Running & Testing """
+        with pool.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            processes = [
+                executor.submit(
+                    check_test_checker,
+                    test,
+                    index,
+                    cmd_run,
+                    run_offset,
+                    constraints_time,
+                    checker_cmd_run,
+                    checker_run_offset,
+                )
+                for index, test in enumerate(tests)
+            ]
+
+            for process in pool.as_completed(processes):
+                idx, verdict, log = process.result()
+                if log != "":
+                    logs.append(log)
+                results[idx] = verdict
+
+        return (results, logs)
+    except Exception as e:
+        print("Exception in Checker", e)
+        return (generate_results_se(results), [f"Custom checker Error: {str(e)}"])

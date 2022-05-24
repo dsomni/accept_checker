@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import time
+from checker import custom
 
 from checker import checker
 import motor.motor_asyncio
@@ -151,6 +152,17 @@ async def tests_checker(attempt, language) -> bool:
         print("ManagerError: ", e)
         if folder_path:
             delete_program_folder(folder_path)
+        try:
+            collection = database["attempt"]
+
+            tests = attempt["results"]
+            spec = attempt["spec"]
+            verdict = await save_results(spec, tests, [5] * len(tests), [str(e)], collection)
+            if not verdict:
+                return False
+            result = await save_verdict(spec, verdict, database)
+        except:
+            print("ManagerError ( in Error:) ): ", e)
         return False
 
 
@@ -194,6 +206,103 @@ async def text_checker(attempt) -> bool:
 
     except BaseException as e:
         print("ManagerError: ", e)
+        try:
+            collection = database["attempt"]
+
+            tests = attempt["results"]
+            spec = attempt["spec"]
+            verdict = await save_results(spec, tests, [5] * len(tests), [str(e)], collection)
+            if not verdict:
+                return False
+            result = await save_verdict(spec, verdict, database)
+        except:
+            print("ManagerError ( in Error:) ): ", e)
+        return False
+
+
+CHECKER_NAME = "checker"
+
+
+async def custom_checker(attempt, language, checker_code, checker_lang) -> bool:
+    folder_path = None
+    try:
+
+        spec = attempt["spec"]
+        collection = database["attempt"]
+
+        tests = attempt["results"]
+
+        if not checker_code:
+            verdict = await save_results(spec, tests, [6] * len(tests), ["No checker specified"], collection)
+            if not verdict:
+                return False
+            result = await save_verdict(spec, verdict, database)
+            return False
+
+        constraints_time = None
+        constraints = attempt["constraints"]
+        if constraints:
+            constraints_time = constraints["time"]
+        lang = language["shortName"]
+        run_offset = language["runOffset"]
+        compile_offset = language["compileOffset"]
+
+        checker_run_offset = checker_lang["runOffset"]
+        checker_compile_offset = checker_lang["compileOffset"]
+
+        """ Setup files """
+        module_name, module_spec = get_module(lang)
+        extension = get_extension(module_spec)
+
+        module_name, checker_module_spec = get_module(checker_lang["shortName"])
+        checker_extension = get_extension(checker_module_spec)
+
+        program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
+        with open(os.path.join(folder_path, f"{CHECKER_NAME}.{checker_extension}"), "w") as custom_checker:
+            custom_checker.write(checker_code)
+
+        """ Run checker """
+        is_set = await set_testing(spec, collection)
+        if not is_set:
+            return False
+        results, logs = custom(
+            module_spec,
+            folder_path,
+            spec,
+            run_offset,
+            compile_offset,
+            tests,
+            constraints_time,
+            checker_module_spec,
+            CHECKER_NAME,
+            checker_run_offset,
+            checker_compile_offset,
+        )
+        delete_program_folder(folder_path)
+
+        """ Save result """
+        await delete_from_pending(spec, database["pending_task_attempt"])
+        verdict = await save_results(spec, tests, results, logs, collection)
+        if not verdict:
+            return False
+        result = await save_verdict(spec, verdict, database)
+        return result
+
+    except BaseException as e:
+        print("ManagerError: ", e)
+        if folder_path:
+            delete_program_folder(folder_path)
+        try:
+            collection = database["attempt"]
+
+            tests = attempt["results"]
+            spec = attempt["spec"]
+            verdict = await save_results(spec, tests, [5] * len(tests), [str(e)], collection)
+            if not verdict:
+                return False
+            result = await save_verdict(spec, verdict, database)
+        except:
+            print("ManagerError ( in Error:) ): ", e)
         return False
 
 
@@ -205,3 +314,8 @@ def run_tests_checker(*args):
 def run_text_checker(*args):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(text_checker(*args))
+
+
+def run_custom_checker(*args):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(custom_checker(*args))
