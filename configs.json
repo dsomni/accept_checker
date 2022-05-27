@@ -18,5 +18,8 @@
     "sleep_timeout_s": "3",
     "langs_refetch_timeout_s": "1800",
     "cpu_utilization": "0.6"
+  },
+  "MANAGER_OPTIONS": {
+    "attempts_folder": "programs"
   }
 }

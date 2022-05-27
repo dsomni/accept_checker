@@ -9,11 +9,14 @@ from checker import custom
 from checker import checker
 import motor.motor_asyncio
 import asyncio
+from dotenv import dotenv_values
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
-    langs_configs = json.load(file)["LANGS"]
-# config = dotenv_values(".env")
+    cnf = json.load(file)
+    langs_configs = cnf["LANGS"]
+    attempts_folder = cnf["MANAGER_OPTIONS"]["attempts_folder"]
+configs = dotenv_values(".env") or {}
 
 
 def check_module(module_name):
@@ -101,15 +104,12 @@ async def delete_from_pending(spec, collection):
     return result.deleted_count == 1
 
 
-FOLDER = "programs"
+FOLDER = attempts_folder or "programs"
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-configs = {}
-with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
-    configs = json.load(file)
 
-client = motor.motor_asyncio.AsyncIOMotorClient(configs["database"]["connection_string"])
+client = motor.motor_asyncio.AsyncIOMotorClient(configs["CONNECTION_STRING"] or "")
 database = client.Accept
 
 

@@ -1,4 +1,6 @@
 from time import sleep
+
+from dotenv import dotenv_values
 from manager import run_tests_checker, run_text_checker, run_custom_checker
 import motor.motor_asyncio
 import os
@@ -87,8 +89,10 @@ if __name__ == "__main__":
     configs = {}
     with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
         configs = json.load(file)
+    db_configs = dotenv_values(".env") or {}
 
-    client = motor.motor_asyncio.AsyncIOMotorClient(configs["database"]["connection_string"])
+    client = motor.motor_asyncio.AsyncIOMotorClient(db_configs["CONNECTION_STRING"] or "")
+
     database = client.Accept
 
     event_loop = asyncio.get_event_loop()
