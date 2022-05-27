@@ -1,16 +1,10 @@
 from time import sleep
-import time
 from manager import run_tests_checker, run_text_checker, run_custom_checker
 import motor.motor_asyncio
 import os
 import json
 import asyncio
 import concurrent.futures as pool
-
-SLEEP_TIMEOUT = 3
-LANGS_REFETCH_TIMEOUT = 60 * 30
-CPU_NUMBER = os.cpu_count() or 0
-MAX_WORKERS = max(2, int(CPU_NUMBER * 0.6))
 
 
 async def take_one(collection):
@@ -29,12 +23,17 @@ async def fetch_languages():
     return languages
 
 
-async def listener():
+async def listener(configs):
+
+    SLEEP_TIMEOUT = int(configs["LISTENER_OPTIONS"]["sleep_timeout_s"] or 3)
+    LANGS_REFETCH_TIMEOUT = int(configs["LISTENER_OPTIONS"]["sleep_timeout_s"] or 1800)
+    CPU_NUMBER = os.cpu_count() or 0
+    MAX_WORKERS = max(2, int(CPU_NUMBER * (float(configs["LISTENER_OPTIONS"]["cpu_utilization"] or 0.6))))
+
     languages = await fetch_languages()
 
     with pool.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # start = datetime.now()
-        # processes = []
         last_lang_refetch = 0
         while True:
             try:
@@ -93,4 +92,4 @@ if __name__ == "__main__":
     database = client.Accept
 
     event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(listener())
+    event_loop.run_until_complete(listener(configs))

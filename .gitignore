@@ -1,5 +1,4 @@
 logs/*
-configs.json
 pascalCompiler/*
 pypyCompiler/*
 

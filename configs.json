@@ -1,0 +1,22 @@
+{
+  "DEFAULT_TIMEOUT": "1",
+  "DEFAULT_TIMEOUT_COMPILE": "5",
+  "LANGS": {
+    "java": "javaChecker",
+    "python": "pythonChecker",
+    "pypy": "pypyChecker",
+    "cpp": "cppChecker",
+    "pascal": "pascalChecker"
+  },
+  "COMPILER_PATHS": {
+    "PYPY": "D:\\pypy\\pypy3.9.exe",
+    "CPP": "g++",
+    "PASCAL": "D:\\PascalABC.NET\\pabcnetcclear.exe",
+    "JAVA": "javac"
+  },
+  "LISTENER_OPTIONS": {
+    "sleep_timeout_s": "3",
+    "langs_refetch_timeout_s": "1800",
+    "cpu_utilization": "0.6"
+  }
+}

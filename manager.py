@@ -13,6 +13,7 @@ import asyncio
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
     langs_configs = json.load(file)["LANGS"]
+# config = dotenv_values(".env")
 
 
 def check_module(module_name):
