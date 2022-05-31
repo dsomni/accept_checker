@@ -111,6 +111,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 client = motor.motor_asyncio.AsyncIOMotorClient(configs["CONNECTION_STRING"] or "")
 database = client.Accept
+client.get_io_loop = asyncio.get_running_loop
 
 
 async def tests_checker(attempt, language) -> bool:
@@ -308,8 +309,14 @@ async def custom_checker(attempt, language, checker_code, checker_lang) -> bool:
 
 
 def run_tests_checker(*args):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(tests_checker(*args))
+
+    try:
+        loop = asyncio.new_event_loop()
+
+        loop.run_until_complete(tests_checker(*args))
+        # asyncio.run(tests_checker(*args), loop=loop)
+    except BaseException as e:
+        print(e)
 
 
 def run_text_checker(*args):

@@ -1,3 +1,4 @@
+from datetime import datetime
 from time import sleep
 
 from dotenv import dotenv_values
@@ -29,24 +30,24 @@ async def listener(configs):
 
     SLEEP_TIMEOUT = int(configs["LISTENER_OPTIONS"]["sleep_timeout_s"] or 3)
     LANGS_REFETCH_TIMEOUT = int(configs["LISTENER_OPTIONS"]["sleep_timeout_s"] or 1800)
-    CPU_NUMBER = os.cpu_count() or 0
-    MAX_WORKERS = max(2, int(CPU_NUMBER * (float(configs["LISTENER_OPTIONS"]["cpu_utilization"] or 0.6))))
+    # CPU_NUMBER = os.cpu_count() or 0
+    # MAX_WORKERS = max(2, int(CPU_NUMBER * (float(configs["LISTENER_OPTIONS"]["cpu_utilization"] or 0.6))))
 
     languages = await fetch_languages()
 
-    with pool.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        # start = datetime.now()
+    with pool.ThreadPoolExecutor() as executor:
+        start = datetime.now()
+        processes = []
         last_lang_refetch = 0
         while True:
             try:
                 queue_item = await take_one(database["pending_task_attempt"])
-
                 if not queue_item:
-                    # for process in processes:
-                    #     if process.done():
-                    #         processes.remove(process)
-                    # if len(processes) == 0:
-                    #     print(datetime.now() - start)
+                    for process in processes:
+                        if process.done():
+                            processes.remove(process)
+                    if len(processes) == 0:
+                        print(datetime.now() - start)
                     last_lang_refetch += SLEEP_TIMEOUT
                     sleep(SLEEP_TIMEOUT)
                     continue
@@ -60,6 +61,7 @@ async def listener(configs):
                 if task_type == 0:  # code
                     if check_type == 0:
                         process = executor.submit(run_tests_checker, attempt, languages[attempt["language"]])
+                        processes.append(process)
                     else:  # check_type == 1
                         checker = queue_item["checker"]
                         if checker:
@@ -74,8 +76,8 @@ async def listener(configs):
                             process = executor.submit(
                                 run_custom_checker, attempt, languages[attempt["language"]], None, None
                             )
-                    if attempt["language"] == 4:  # java
-                        process.result()
+                    # if attempt["language"] == 4:  # java
+                    #     process.result()
                 elif task_type == 1:  # text
                     process = executor.submit(run_text_checker, attempt)
 
@@ -92,8 +94,9 @@ if __name__ == "__main__":
     db_configs = dotenv_values(".env") or {}
 
     client = motor.motor_asyncio.AsyncIOMotorClient(db_configs["CONNECTION_STRING"] or "")
+    client.get_io_loop = asyncio.get_running_loop
 
     database = client.Accept
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(listener(configs))
+    # event_loop = asyncio.get_event_loop()
+    asyncio.run(listener(configs))

@@ -30,12 +30,15 @@ def setup(module_spec, folder, program_name):
 
 def compile_program(cmd_compile, logs, compile_offset):
     try:
-        code = subprocess.run(
-            cmd_compile, capture_output=True, timeout=DEFAULT_TIMEOUT_COMPILE + compile_offset, check=True
-        )
-        if code.stderr:
-            logs.append(f"Compiler error: {code.stderr}")
-        return 0
+        # code = subprocess.run(
+        #     cmd_compile, capture_output=True, timeout=DEFAULT_TIMEOUT_COMPILE + compile_offset, check=True
+        # )
+        p = psutil.Popen(cmd_compile, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p.rlimit(psutil.RLIMIT_CPU, (DEFAULT_TIMEOUT_COMPILE + compile_offset, DEFAULT_TIMEOUT_COMPILE + compile_offset))
+        p.rlimit(psutil.RLIMIT_DATA, (256 * 1024 * 1024, 256 * 1024 * 1024))
+        # if p.status:
+        #     logs.append(f"Compiler error: {code.stderr}")
+        # return 0
     except subprocess.CalledProcessError as e:
         logs.append(f"Compiler error: {e.stderr}")
         return 1
@@ -88,27 +91,39 @@ def run_program(test_input, test_output, cmd_run, run_offset, constraints_time):
     process = None
     verdict = 5
     try:
-        process = subprocess.Popen(
+        # process = subprocess.Popen(
+        #     cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        # )
+
+        process = psutil.Popen(
             cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        timeout = DEFAULT_TIMEOUT + run_offset
+
+        timeout = DEFAULT_TIMEOUT  + run_offset
         if constraints_time:
             timeout = constraints_time + run_offset
 
-        result, errs = process.communicate(input=test_input, timeout=timeout)
+
+        process.rlimit(psutil.RLIMIT_CPU, (timeout, timeout))
+        process.rlimit(psutil.RLIMIT_DATA, (4 * 1024 * 1024, 4 * 1024 * 1024))
+
+        result, errs = process.communicate(input=test_input)
         if process.returncode != 0:
+            print(process)
             verdict = 4  # RE
         elif compare_results(result, test_output):
             verdict = 0  # OK
         else:
             verdict = 2  # WA
-    except subprocess.TimeoutExpired as e:
+    except psutil.TimeoutExpired as e:
         verdict = 1  # TL
-    except subprocess.SubprocessError as e:
+    except psutil.Error as e:
+        print(e)
         verdict = 4  # RE
     except BaseException as e:
         verdict = 5
     if process:
+        # process.kill()
         kill_process_tree(process.pid)
     return verdict
 
@@ -140,7 +155,7 @@ def checker(
             return (generate_results_ce(results), logs)
 
         """ Running & Testing """
-        with pool.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with pool.ThreadPoolExecutor() as executor:
             processes = [
                 executor.submit(check_test, test, index, cmd_run, run_offset, constraints_time)
                 for index, test in enumerate(tests)
@@ -201,18 +216,20 @@ def check_test_checker(testResult, idx, cmd_run, run_offset, constraints_time, c
         process = subprocess.Popen(
             cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        timeout = DEFAULT_TIMEOUT + run_offset
+        timeout = DEFAULT_TIMEOUT#+ run_offset
         if constraints_time:
             timeout = constraints_time + run_offset
 
         result, errs = process.communicate(input=test_input, timeout=timeout)
         if process.returncode != 0:
+            print(errs)
             verdict = 4  # RE
         else:
             verdict, log = check_output(test_input, result, checker_cmd_run, checker_run_offset)
     except subprocess.TimeoutExpired as e:
         verdict = 1  # TL
     except subprocess.SubprocessError as e:
+        print(e)
         verdict = 4  # RE
     except BaseException as e:
         verdict = 5
