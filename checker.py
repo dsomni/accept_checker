@@ -15,6 +15,7 @@ with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as fi
     configs = json.load(file)
 DEFAULT_TIMEOUT = float(configs["DEFAULT_TIMEOUT"])
 DEFAULT_TIMEOUT_COMPILE = float(configs["DEFAULT_TIMEOUT_COMPILE"])
+DEFAULT_MEMORY_LIMIT = 256 * 1024 * 1024
 
 
 def import_module_from_spec(module_spec):
@@ -30,18 +31,14 @@ def setup(module_spec, folder, program_name):
 
 def compile_program(cmd_compile, logs, compile_offset):
     try:
-        # code = subprocess.run(
-        #     cmd_compile, capture_output=True, timeout=DEFAULT_TIMEOUT_COMPILE + compile_offset, check=True
-        # )
         p = psutil.Popen(cmd_compile, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         p.rlimit(psutil.RLIMIT_CPU, (DEFAULT_TIMEOUT_COMPILE + compile_offset, DEFAULT_TIMEOUT_COMPILE + compile_offset))
-        p.rlimit(psutil.RLIMIT_DATA, (256 * 1024 * 1024, 256 * 1024 * 1024))
-        # if p.status:
-        #     logs.append(f"Compiler error: {code.stderr}")
-        # return 0
-    except subprocess.CalledProcessError as e:
-        logs.append(f"Compiler error: {e.stderr}")
-        return 1
+        p.rlimit(psutil.RLIMIT_DATA, (DEFAULT_MEMORY_LIMIT, DEFAULT_MEMORY_LIMIT))
+        p.rlimit(psutil.RLIMIT_STACK, (DEFAULT_MEMORY_LIMIT, DEFAULT_MEMORY_LIMIT))
+        p.wait()
+        if p.returncode != 0:
+            logs.append(f"Compiler error: {str(p.stderr.read())}")
+            return 1
     except Exception as e:
         logs.append(f"Error during compilation: {str(e)}")
         return 1
@@ -91,9 +88,6 @@ def run_program(test_input, test_output, cmd_run, run_offset, constraints_time):
     process = None
     verdict = 5
     try:
-        # process = subprocess.Popen(
-        #     cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        # )
 
         process = psutil.Popen(
             cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -105,22 +99,32 @@ def run_program(test_input, test_output, cmd_run, run_offset, constraints_time):
 
 
         process.rlimit(psutil.RLIMIT_CPU, (timeout, timeout))
-        process.rlimit(psutil.RLIMIT_DATA, (4 * 1024 * 1024, 4 * 1024 * 1024))
+        process.rlimit(psutil.RLIMIT_DATA, (DEFAULT_MEMORY_LIMIT, DEFAULT_MEMORY_LIMIT))
+        process.rlimit(psutil.RLIMIT_STACK, (DEFAULT_MEMORY_LIMIT, DEFAULT_MEMORY_LIMIT))
 
         result, errs = process.communicate(input=test_input)
-        if process.returncode != 0:
-            print(process)
+        print(process.wait())
+        # print(errs)
+        # result = process.stdout.read()
+        returncode = process.returncode
+        # print('code', returncode)
+        if returncode == 1:
+            # print(result)
             verdict = 4  # RE
+        elif returncode == -9 or returncode == 127:
+            verdict = 1  # TL
         elif compare_results(result, test_output):
             verdict = 0  # OK
         else:
             verdict = 2  # WA
-    except psutil.TimeoutExpired as e:
-        verdict = 1  # TL
+    # except psutil.TimeoutExpired as e:
+    #     print(1)
+
     except psutil.Error as e:
         print(e)
         verdict = 4  # RE
     except BaseException as e:
+        print(e)
         verdict = 5
     if process:
         # process.kill()
