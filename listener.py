@@ -12,15 +12,17 @@ import concurrent.futures as pool
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
 def run_manager(spec):
     global CURRENT_DIR
     try:
-        subprocess.run(['python' ,os.path.join(CURRENT_DIR, 'manager.py'),  spec], check=True)
-    except BaseException as e :
-        print(f'Listener error: error when starting manager: {e}')
+        subprocess.run(["python", os.path.join(CURRENT_DIR, "manager.py"), spec], check=True)
+    except BaseException as e:
+        print(f"Listener error: error when starting manager: {e}")
+
 
 async def take_one(collection):
-    queue_item = await collection.find_one({"examined": None}, {'attempt': True})
+    queue_item = await collection.find_one({"examined": None}, {"attempt": True})
     if queue_item:
         await collection.update_one({"attempt": queue_item["attempt"]}, {"$set": {"examined": True}})
     return queue_item
@@ -51,7 +53,6 @@ async def listener(configs):
 
                 process = executor.submit(run_manager, attempt_spec)
                 processes.append(process)
-
 
             except BaseException as e:
                 print(e)

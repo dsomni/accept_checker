@@ -47,8 +47,10 @@ def get_extension(module_spec):
     module = import_module_from_spec(module_spec)
     return module.extension_compile
 
+
 def generate_program_path(folder, program_name):
     return os.path.abspath(os.path.join(CURRENT_DIR, folder, program_name))
+
 
 def create_program_file(folder, program_name, extension, programText):
     folder_path = generate_program_path(folder, program_name)
@@ -61,10 +63,10 @@ def create_program_file(folder, program_name, extension, programText):
 
 def delete_program_folder(folder):
     try:
-        shutil.rmtree(folder,ignore_errors=True)
+        shutil.rmtree(folder, ignore_errors=True)
     except BaseException as e:
         time.sleep(1)
-        shutil.rmtree(folder,ignore_errors=True)
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 async def save_verdict(attempt_spec, verdict, database):
@@ -108,7 +110,6 @@ async def delete_from_pending(spec, collection):
     return result.deleted_count == 1
 
 
-
 FOLDER = attempts_folder or "programs"
 
 
@@ -117,6 +118,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 client = motor.motor_asyncio.AsyncIOMotorClient(configs["CONNECTION_STRING"] or "")
 database = client.Accept
 client.get_io_loop = asyncio.get_running_loop
+
 
 async def save_results(spec, tests, results, logs):
     collection = database["attempt"]
@@ -145,6 +147,7 @@ def soft_run(func):
 
     return inner
 
+
 @soft_run
 async def tests_checker(attempt, language) -> bool:
 
@@ -153,11 +156,14 @@ async def tests_checker(attempt, language) -> bool:
 
     tests = attempt["results"]
     constraints_time = None
+    constraints_memory = None
     constraints = attempt["constraints"]
     if constraints:
         constraints_time = constraints["time"]
+        constraints_memory = constraints["memory"]
     lang = language["shortName"]
     run_offset = language["runOffset"]
+    mem_offset = language["memOffset"]
     compile_offset = language["compileOffset"]
     spec = attempt["spec"]
 
@@ -171,7 +177,17 @@ async def tests_checker(attempt, language) -> bool:
     is_set = await set_testing(spec, collection)
     if not is_set:
         return False
-    results, logs = checker(module_spec, folder_path, spec, run_offset, compile_offset, tests, constraints_time)
+    results, logs = checker(
+        module_spec,
+        folder_path,
+        spec,
+        run_offset,
+        compile_offset,
+        tests,
+        constraints_time,
+        constraints_memory,
+        mem_offset,
+    )
     delete_program_folder(folder_path)
 
     """ Save result """
@@ -212,8 +228,8 @@ async def text_checker(attempt) -> bool:
     return await save_results(spec, tests, results, [])
 
 
-
 CHECKER_NAME = "checker"
+
 
 @soft_run
 async def custom_checker(attempt, language, checker) -> bool:
@@ -229,14 +245,18 @@ async def custom_checker(attempt, language, checker) -> bool:
         return await save_results(spec, tests, [6] * len(tests), ["No checker specified"])
 
     constraints_time = None
+    constraints_memory = None
     constraints = attempt["constraints"]
     if constraints:
         constraints_time = constraints["time"]
+        constraints_memory = constraints["memory"]
     lang = language["shortName"]
     run_offset = language["runOffset"]
+    mem_offset = language["memOffset"]
     compile_offset = language["compileOffset"]
 
     checker_run_offset = checker_lang["runOffset"]
+    checker_mem_offset = checker_lang["memOffset"]
     checker_compile_offset = checker_lang["compileOffset"]
 
     """ Setup files """
@@ -262,10 +282,13 @@ async def custom_checker(attempt, language, checker) -> bool:
         compile_offset,
         tests,
         constraints_time,
+        constraints_memory,
+        mem_offset,
         checker_module_spec,
         CHECKER_NAME,
         checker_run_offset,
         checker_compile_offset,
+        checker_mem_offset,
     )
     delete_program_folder(folder_path)
 
