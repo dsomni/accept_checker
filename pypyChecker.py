@@ -12,6 +12,10 @@ extension_run = "py"
 pathToCompiler = configs["COMPILER_PATHS"]["PYPY"]
 
 
+def mem_usage(mem):
+    return mem.data
+
+
 def cmd_compile(folder_path, program_name):
     return [
         pathToCompiler,
@@ -23,3 +27,7 @@ def cmd_compile(folder_path, program_name):
 
 def cmd_run(folder_path, program_name):
     return [pathToCompiler, path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]
+
+
+time_offset_code = "a = 0"
+memory_offset_code = "while True: \n\t a = 0"

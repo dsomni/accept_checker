@@ -173,6 +173,9 @@ async def tests_checker(attempt, language) -> bool:
 
     program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
 
+    if lang == "pascal":
+        folder_path = os.path.join(FOLDER, spec)
+
     """ Run checker """
     is_set = await set_testing(spec, collection)
     if not is_set:
@@ -250,6 +253,7 @@ async def custom_checker(attempt, language, checker) -> bool:
     if constraints:
         constraints_time = constraints["time"]
         constraints_memory = constraints["memory"]
+
     lang = language["shortName"]
     run_offset = language["runOffset"]
     mem_offset = language["memOffset"]
@@ -267,8 +271,11 @@ async def custom_checker(attempt, language, checker) -> bool:
     checker_extension = get_extension(checker_module_spec)
 
     program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
-    with open(os.path.join(folder_path, f"{CHECKER_NAME}.{checker_extension}"), "w") as custom_checker:
-        custom_checker.write(checker_code)
+    with open(os.path.join(folder_path, f"{CHECKER_NAME}.{checker_extension}"), "w") as custom_checker_f:
+        custom_checker_f.write(checker_code)
+
+    if lang == "pascal" or checker_lang == "pascal":
+        folder_path = os.path.join(FOLDER, spec)
 
     """ Run checker """
     is_set = await set_testing(spec, collection)
@@ -313,9 +320,10 @@ async def start(*args):
             await tests_checker(attempt, language)
         else:  # check_type == 1
             checker = queue_item["checker"]
-
+            checker_language = await database["language"].find_one({"spec": checker["language"]})
+            checker["language"] = checker_language
             if checker:
-                await custom_checker(attempt, language, queue_item["checker"])
+                await custom_checker(attempt, language, checker)
             else:
                 await custom_checker(attempt, language, None)
 

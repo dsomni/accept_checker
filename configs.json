@@ -9,9 +9,9 @@
     "pascal": "pascalChecker"
   },
   "COMPILER_PATHS": {
-    "PYPY": "D:\\pypy\\pypy3.9.exe",
+    "PYPY": "pypy",
     "CPP": "g++",
-    "PASCAL": "D:\\PascalABC.NET\\pabcnetcclear.exe",
+    "PASCAL": "pabcnetcclear",
     "JAVA": "javac"
   },
   "LISTENER_OPTIONS": {
