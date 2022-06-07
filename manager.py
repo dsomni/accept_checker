@@ -1,72 +1,23 @@
-import importlib.util
 from itertools import zip_longest
 import json
 import os
-import shutil
-import time
 from checker import custom
-
 import sys
-
 from checker import checker
-import motor.motor_asyncio
 import asyncio
-from dotenv import dotenv_values
+
+from utils import connect_to_db, create_program_file, delete_program_folder, generate_program_path, get_extension, get_module, send_alert
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
     cnf = json.load(file)
     langs_configs = cnf["LANGS"]
     attempts_folder = cnf["MANAGER_OPTIONS"]["attempts_folder"]
-configs = dotenv_values(".env") or {}
 
 
-def check_module(module_name):
-    module_name = module_name
-    module_spec = importlib.util.find_spec(module_name)
-    if module_spec is None:
-        return None
-    else:
-        return module_spec
+FOLDER = attempts_folder or "programs"
 
-
-def import_module_from_spec(module_spec):
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
-    return module
-
-
-def get_module(lang):
-    global langs_configs
-    module_name = langs_configs[lang]
-    module_spec = check_module(module_name)
-    return module_name, module_spec
-
-
-def get_extension(module_spec):
-    module = import_module_from_spec(module_spec)
-    return module.extension_compile
-
-
-def generate_program_path(folder, program_name):
-    return os.path.abspath(os.path.join(CURRENT_DIR, folder, program_name))
-
-
-def create_program_file(folder, program_name, extension, programText):
-    folder_path = generate_program_path(folder, program_name)
-    path = os.path.abspath(os.path.join(folder_path, f"{program_name}.{extension}"))
-    os.mkdir(folder_path)
-    with open(path, "w") as program:
-        program.write(programText)
-    return path, folder_path
-
-
-def delete_program_folder(folder):
-    try:
-        shutil.rmtree(folder, ignore_errors=True)
-    except BaseException as e:
-        time.sleep(1)
-        shutil.rmtree(folder, ignore_errors=True)
+database = connect_to_db()
 
 
 async def save_verdict(attempt_spec, verdict, database):
@@ -97,7 +48,6 @@ async def save_attempt_results(spec, tests, results, logs, collection):
     )
 
     return r.modified_count == 1
-    # return True
 
 
 async def set_testing(spec, collection):
@@ -108,16 +58,6 @@ async def set_testing(spec, collection):
 async def delete_from_pending(spec, collection):
     result = await collection.delete_one({"attempt": spec})
     return result.deleted_count == 1
-
-
-FOLDER = attempts_folder or "programs"
-
-
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-client = motor.motor_asyncio.AsyncIOMotorClient(configs["CONNECTION_STRING"] or "")
-database = client.Accept
-client.get_io_loop = asyncio.get_running_loop
 
 
 async def save_results(spec, tests, results, logs):
@@ -137,44 +77,48 @@ def soft_run(func):
         except BaseException as e:
             tests = attempt["results"]
             spec = attempt["spec"]
-            print("ManagerError: ", e)
+            await send_alert("ManagerError", f"{spec}\n{e}")
             delete_program_folder(generate_program_path(FOLDER, spec))
             try:
                 await save_results(spec, tests, [5] * len(tests), [str(e)])
             except:
-                print("ManagerError (in handler:) ): ", e)
+                await send_alert("ManagerError (when saving results)", f"{spec}\n{str(e)}")
             return False
 
     return inner
 
 
-@soft_run
-async def tests_checker(attempt, language) -> bool:
-
-    folder_path = None
-    collection = database["attempt"]
-
-    tests = attempt["results"]
+def get_constraints(attempt):
     constraints_time = None
     constraints_memory = None
     constraints = attempt["constraints"]
     if constraints:
         constraints_time = constraints["time"]
         constraints_memory = constraints["memory"]
-    lang = language["shortName"]
+    return constraints_time, constraints_memory
+
+def get_offsets(language):
+    compile_offset = language["compileOffset"]
     run_offset = language["runOffset"]
     mem_offset = language["memOffset"]
-    compile_offset = language["compileOffset"]
+    return compile_offset, run_offset, mem_offset
+
+@soft_run
+async def tests_checker(attempt, language) -> bool:
+    folder_path = None
+    collection = database["attempt"]
+
+    constraints = get_constraints(attempt)
+    offsets = get_offsets(language)
     spec = attempt["spec"]
+    tests = attempt["results"]
+    lang = language["shortName"]
 
     """ Setup files """
-    module_name, module_spec = get_module(lang)
+    module_name, module_spec = get_module(lang, langs_configs)
     extension = get_extension(module_spec)
 
     program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
-
-    if lang == "pascal":
-        folder_path = os.path.join(FOLDER, spec)
 
     """ Run checker """
     is_set = await set_testing(spec, collection)
@@ -184,12 +128,9 @@ async def tests_checker(attempt, language) -> bool:
         module_spec,
         folder_path,
         spec,
-        run_offset,
-        compile_offset,
         tests,
-        constraints_time,
-        constraints_memory,
-        mem_offset,
+        constraints,
+        offsets,
     )
     delete_program_folder(folder_path)
 
@@ -233,7 +174,6 @@ async def text_checker(attempt) -> bool:
 
 CHECKER_NAME = "checker"
 
-
 @soft_run
 async def custom_checker(attempt, language, checker) -> bool:
     checker_code = checker["sourceCode"]
@@ -247,35 +187,24 @@ async def custom_checker(attempt, language, checker) -> bool:
     if not checker_code:
         return await save_results(spec, tests, [6] * len(tests), ["No checker specified"])
 
-    constraints_time = None
-    constraints_memory = None
-    constraints = attempt["constraints"]
-    if constraints:
-        constraints_time = constraints["time"]
-        constraints_memory = constraints["memory"]
+    constraints = get_constraints(attempt)
+
+    offsets = get_offsets(language)
 
     lang = language["shortName"]
-    run_offset = language["runOffset"]
-    mem_offset = language["memOffset"]
-    compile_offset = language["compileOffset"]
 
-    checker_run_offset = checker_lang["runOffset"]
-    checker_mem_offset = checker_lang["memOffset"]
-    checker_compile_offset = checker_lang["compileOffset"]
+    checker_offsets = get_offsets(checker_lang)
 
     """ Setup files """
-    module_name, module_spec = get_module(lang)
+    module_name, module_spec = get_module(lang, langs_configs)
     extension = get_extension(module_spec)
 
-    module_name, checker_module_spec = get_module(checker_lang["shortName"])
+    module_name, checker_module_spec = get_module(checker_lang["shortName"], langs_configs)
     checker_extension = get_extension(checker_module_spec)
 
     program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
     with open(os.path.join(folder_path, f"{CHECKER_NAME}.{checker_extension}"), "w") as custom_checker_f:
         custom_checker_f.write(checker_code)
-
-    if lang == "pascal" or checker_lang == "pascal":
-        folder_path = os.path.join(FOLDER, spec)
 
     """ Run checker """
     is_set = await set_testing(spec, collection)
@@ -285,17 +214,12 @@ async def custom_checker(attempt, language, checker) -> bool:
         module_spec,
         folder_path,
         spec,
-        run_offset,
-        compile_offset,
         tests,
-        constraints_time,
-        constraints_memory,
-        mem_offset,
+        constraints,
+        offsets,
         checker_module_spec,
         CHECKER_NAME,
-        checker_run_offset,
-        checker_compile_offset,
-        checker_mem_offset,
+        checker_offsets,
     )
     delete_program_folder(folder_path)
 

@@ -24,5 +24,5 @@ def cmd_run(folder_path, program_name):
     return ["java", path.abspath(path.join(folder_path, f"{program_name}.{extension_run}"))]
 
 
-time_offset_code = "class Main\n{ public static void main(String args[])\n  {\n    int a;\n  }\n}"
+time_offset_code = "class Main\n{ public static void main(String args[])\n{\nSystem.out.println(1); } }"
 memory_offset_code = "class Main\n{ public static void main(String args[])\n  {\n    while(true){}\n  }\n}"

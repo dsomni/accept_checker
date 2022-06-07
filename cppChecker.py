@@ -31,6 +31,3 @@ def cmd_run(folder_path, program_name):
 
 time_offset_code = "int main()\n{\nint a = 0;\nreturn 0;\n }"
 memory_offset_code = "int main()\n{\nwhile(true){}\nreturn 0;\n }"
-
-# def cmd_run(folder_path, program_name):
-#   return [path.abspath(path.join(folder_path, f'{program_name}.{extension_run}'))]

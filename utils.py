@@ -1,13 +1,34 @@
+import asyncio
+from datetime import datetime, timezone
 import shutil
 import importlib.util
 import sys
 import time
 import os
-
+from dotenv import dotenv_values
+import motor.motor_asyncio
 import psutil
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(CURRENT_DIR)
+
+def connect_to_db():
+    db_configs = dotenv_values(".env") or {}
+    client = motor.motor_asyncio.AsyncIOMotorClient(db_configs["CONNECTION_STRING"] or "")
+    client.get_io_loop = asyncio.get_running_loop
+    return client.Accept
+
+
+async def send_alert(title: str, message: str, status: str = 'error'):
+    database = connect_to_db()
+    collection = database['checker_alert']
+    alert = dict()
+    alert['date'] = datetime.now(timezone.utc)
+    alert['title'] = title
+    alert['message'] = message
+    alert['status'] = status
+    await collection.insert_one(alert)
+    print(f'{title}, alert sended')
 
 
 def check_module(module_name):
