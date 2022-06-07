@@ -1,6 +1,6 @@
 {
-  "DEFAULT_TIMEOUT": "1",
-  "DEFAULT_TIMEOUT_COMPILE": "5",
+  "DEFAULT_TIME_LIMIT": "1",
+  "DEFAULT_MEMORY_LIMIT": "16777216",
   "LANGS": {
     "java": "javaChecker",
     "python": "pythonChecker",
@@ -9,9 +9,9 @@
     "pascal": "pascalChecker"
   },
   "COMPILER_PATHS": {
-    "PYPY": "D:\\pypy\\pypy3.9.exe",
+    "PYPY": "pypy3",
     "CPP": "g++",
-    "PASCAL": "D:\\PascalABC.NET\\pabcnetcclear.exe",
+    "PASCAL": "pabcnetc",
     "JAVA": "javac"
   },
   "LISTENER_OPTIONS": {
