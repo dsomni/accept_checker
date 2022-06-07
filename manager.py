@@ -1,162 +1,259 @@
-import sys
-import importlib.util
-import subprocess
-import os
-import shutil
-import time
+from itertools import zip_longest
 import json
+import os
+from checker import custom
+import sys
+from checker import checker
+import asyncio
+
+from utils import connect_to_db, create_program_file, delete_program_folder, generate_program_path, get_extension, get_module, send_alert
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(CURRENT_DIR)
+with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
+    cnf = json.load(file)
+    langs_configs = cnf["LANGS"]
+    attempts_folder = cnf["MANAGER_OPTIONS"]["attempts_folder"]
 
 
-def create_folder(folder):
-    try:
-        os.mkdir(folder)
-    except Exception as e:
-        pass
+FOLDER = attempts_folder or "programs"
+
+database = connect_to_db()
 
 
-def check_module(module_name):
-    module_name = module_name
-    module_spec = importlib.util.find_spec(module_name)
-    if module_spec is None:
-        return None
-    else:
-        return module_spec
+async def save_verdict(attempt_spec, verdict, database):
+    verdict_coll = database["user_task_verdict"]
+    user_task = await database["user_task_attempt"].find_one({"attempt": attempt_spec})
+    if not user_task:
+        return False
+    await verdict_coll.update_one(
+        {"user": user_task["user"], "task": user_task["task"], "verdict": {"$ne": 0}},
+        {"$set": {"verdict": verdict}},
+        True,
+    )
+    return True
 
 
-def import_module_from_spec(module_spec):
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
-    return module
-
-
-def get_module(lang):
-    global langs_configs
-    module_name = langs_configs[lang]
-    module_spec = check_module(module_name)
-    # if module_spec:
-    return module_name, module_spec
-
-
-def get_extension(module_spec):
-    module = import_module_from_spec(module_spec)
-    return module.extension_compile
-
-
-def create_program_file(folder, program_name, extension, programText):
-    with open(os.path.abspath(os.path.join(folder, f'{program_name}.{extension}')), 'w') as program:
-        program.write(programText)
-
-
-def setup_tests(folder, tests):
-    path = os.path.abspath(os.path.join(folder, 'tests'))
-    create_folder(path)
+async def save_attempt_results(spec, tests, results, logs, collection):
     for i in range(len(tests)):
-        with open(os.path.abspath(os.path.join(path, f'input{i}.log')), 'w') as inp, open(os.path.abspath(os.path.join(path, f'output{i}.log')), 'w') as out:
-            inp.write(tests[i][0])
-            out.write(tests[i][1])
-    return path
+        tests[i]["verdict"] = results[i]
+
+    verdict = len(tests) - 1
+    for idx, result in enumerate(tests):
+        if result["verdict"] != 0:
+            verdict = idx
+            break
+
+    r = await collection.update_one(
+        {"spec": spec}, {"$set": {"status": 2, "verdict": verdict, "results": tests, "logs": logs}}
+    )
+
+    return r.modified_count == 1
 
 
-def get_results_path(folder):
-    path = os.path.abspath(os.path.join(folder, 'results'))
-    create_folder(path)
-    return path
-
-def get_output_path(folder):
-    path = os.path.abspath(os.path.join(folder, 'program_output'))
-    create_folder(path)
-    return path
+async def set_testing(spec, collection):
+    result = await collection.update_one({"spec": spec}, {"$set": {"status": 1}})
+    return result.matched_count == 1
 
 
-def get_results(results_folder_path, tests_length):
-    results = []
-    for i in range(tests_length):
-        with open(os.path.abspath(os.path.join(results_folder_path, str(i))), 'r') as file:
-            result = list(map(lambda x: x.strip(), file.readlines()))
-            results.append({
-                "index": result[0],
-                "result": result[1],
-                "shortResult": result[2]
-            })
-    return results
-
-def get_output(results_folder_path, tests_length):
-    outputs = []
-    for i in range(tests_length):
-        with open(os.path.abspath(os.path.join(results_folder_path, f'out{i}.log')), 'r') as file:
-            output = '\n'.join(list(map(lambda x: x.strip(), file.readlines())))
-            outputs.append(output)
-    return outputs
-
-def before_end(folder):
-    try:
-        shutil.rmtree(folder)
-    except:
-        # delete folder using chroot
-        # time.sleep(1)
-        # shutil.rmtree(folder)
-        pass
-    pass
+async def delete_from_pending(spec, collection):
+    result = await collection.delete_one({"attempt": spec})
+    return result.deleted_count == 1
 
 
-DEFAULT_NAME = 'program'
+async def save_results(spec, tests, results, logs):
+    collection = database["attempt"]
+    await delete_from_pending(spec, database["pending_task_attempt"])
+    verdict = await save_attempt_results(spec, tests, results, logs, collection)
+    if not verdict:
+        return False
+    result = await save_verdict(spec, verdict, database)
+    return result
 
-# langs_configs = []
-with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
-    langs_configs = json.load(file)["LANGS"]
-langs = list(langs_configs.keys())
+
+def soft_run(func):
+    async def inner(attempt, *args):
+        try:
+            await func(attempt, *args)
+        except BaseException as e:
+            tests = attempt["results"]
+            spec = attempt["spec"]
+            await send_alert("ManagerError", f"{spec}\n{e}")
+            delete_program_folder(generate_program_path(FOLDER, spec))
+            try:
+                await save_results(spec, tests, [5] * len(tests), [str(e)])
+            except:
+                await send_alert("ManagerError (when saving results)", f"{spec}\n{str(e)}")
+            return False
+
+    return inner
 
 
-def run(lang, program_text, tests, should_before_end=True, should_print_command=False, should_collect_output=False):
+def get_constraints(attempt):
+    constraints_time = None
+    constraints_memory = None
+    constraints = attempt["constraints"]
+    if constraints:
+        constraints_time = constraints["time"]
+        constraints_memory = constraints["memory"]
+    return constraints_time, constraints_memory
 
-    create_folder(os.path.abspath(os.path.join(CURRENT_DIR, 'logs')))
-    folder = os.path.abspath(os.path.join(CURRENT_DIR, 'logs', f'{lang}_logs'))
-    results = []
-    tests_length = len(tests)
+def get_offsets(language):
+    compile_offset = language["compileOffset"]
+    run_offset = language["runOffset"]
+    mem_offset = language["memOffset"]
+    return compile_offset, run_offset, mem_offset
 
-    ''' Create a folder '''
-    create_folder(folder)
+@soft_run
+async def tests_checker(attempt, language) -> bool:
+    folder_path = None
+    collection = database["attempt"]
 
-    ''' Setup files '''
-    module_name, module_spec = get_module(lang)
+    constraints = get_constraints(attempt)
+    offsets = get_offsets(language)
+    spec = attempt["spec"]
+    tests = attempt["results"]
+    lang = language["shortName"]
+
+    """ Setup files """
+    module_name, module_spec = get_module(lang, langs_configs)
     extension = get_extension(module_spec)
 
+    program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
 
-    program_name = DEFAULT_NAME
-    create_program_file(folder, program_name, extension, program_text)
-    tests_folder_path = setup_tests(folder, tests)
-    results_folder_path = get_results_path(folder)
+    """ Run checker """
+    is_set = await set_testing(spec, collection)
+    if not is_set:
+        return False
+    results, logs = checker(
+        module_spec,
+        folder_path,
+        spec,
+        tests,
+        constraints,
+        offsets,
+    )
+    delete_program_folder(folder_path)
 
-    ''' Setup command '''
-    command = ['python', os.path.abspath(os.path.join(CURRENT_DIR, 'checker.py')), module_name, folder, program_name,
-               tests_folder_path, str(tests_length), results_folder_path]
-    if should_print_command:
-        print(' '.join(command))
-
-    ''' Run checker '''
-    try:
-        checker_process = subprocess.Popen(command)
-        checker_process.wait()
-    except:
-        pass
-
-    ''' Generate results '''
-    code = checker_process.returncode
-    if (code == 0):
-        results = get_results(results_folder_path, tests_length)
-
-    ''' Collect program output '''
-    outputs = []
-    if should_collect_output:
-        outputs = get_output(folder, tests_length)
-
-    if should_before_end:
-        before_end(folder)
-    return [sorted(results, key=lambda result: result['index']), outputs]
+    """ Save result """
+    return await save_results(spec, tests, results, logs)
 
 
-# results = run('cpp', '#include <iostream>\n using namespace std;\nint main()\n{\nint a; cin >> a; cout << 1/a;\nreturn 0;\n}', [['0', '1']], False, False)
-# print(results)
+def compare_strings(test: str, answer: str) -> int:
+    test_strings = map(lambda x: x.strip(), test.strip().split("\n"))
+    answer_strings = map(lambda x: x.strip(), answer.strip().split("\n"))
+    for t, a in zip_longest(test_strings, answer_strings):
+        if t != a:
+            return 2
+    return 0
+
+
+@soft_run
+async def text_checker(attempt) -> bool:
+    collection = database["attempt"]
+
+    tests = attempt["results"]
+    spec = attempt["spec"]
+    answers = attempt["textAnswers"]
+    answers_length = len(answers)
+
+    """ Run checker """
+    is_set = await set_testing(spec, collection)
+    if not is_set:
+        return False
+
+    results = []
+    for i, test_result in enumerate(tests):
+        if i >= answers_length:
+            results.append(2)  # WA
+        else:
+            results.append(compare_strings(test_result["test"]["outputData"], answers[i]))
+
+    """ Save result """
+    return await save_results(spec, tests, results, [])
+
+
+CHECKER_NAME = "checker"
+
+@soft_run
+async def custom_checker(attempt, language, checker) -> bool:
+    checker_code = checker["sourceCode"]
+    checker_lang = checker["language"]
+
+    spec = attempt["spec"]
+    collection = database["attempt"]
+
+    tests = attempt["results"]
+
+    if not checker_code:
+        return await save_results(spec, tests, [6] * len(tests), ["No checker specified"])
+
+    constraints = get_constraints(attempt)
+
+    offsets = get_offsets(language)
+
+    lang = language["shortName"]
+
+    checker_offsets = get_offsets(checker_lang)
+
+    """ Setup files """
+    module_name, module_spec = get_module(lang, langs_configs)
+    extension = get_extension(module_spec)
+
+    module_name, checker_module_spec = get_module(checker_lang["shortName"], langs_configs)
+    checker_extension = get_extension(checker_module_spec)
+
+    program_path, folder_path = create_program_file(FOLDER, spec, extension, attempt["programText"])
+    with open(os.path.join(folder_path, f"{CHECKER_NAME}.{checker_extension}"), "w") as custom_checker_f:
+        custom_checker_f.write(checker_code)
+
+    """ Run checker """
+    is_set = await set_testing(spec, collection)
+    if not is_set:
+        return False
+    results, logs = custom(
+        module_spec,
+        folder_path,
+        spec,
+        tests,
+        constraints,
+        offsets,
+        checker_module_spec,
+        CHECKER_NAME,
+        checker_offsets,
+    )
+    delete_program_folder(folder_path)
+
+    """ Save result """
+    return await save_results(spec, tests, results, logs)
+
+
+async def start(*args):
+    attempt_spec = args[1]
+
+    attempt = await database["attempt"].find_one({"spec": attempt_spec})
+
+    queue_item = await database["pending_task_attempt"].find_one({"attempt": attempt_spec})
+
+    task_type = queue_item["taskType"]
+    check_type = queue_item["taskCheckType"]
+
+    if task_type == 0:  # code
+
+        language = await database["language"].find_one({"spec": attempt["language"]})
+        if check_type == 0:
+            await tests_checker(attempt, language)
+        else:  # check_type == 1
+            checker = queue_item["checker"]
+            checker_language = await database["language"].find_one({"spec": checker["language"]})
+            checker["language"] = checker_language
+            if checker:
+                await custom_checker(attempt, language, checker)
+            else:
+                await custom_checker(attempt, language, None)
+
+    elif task_type == 1:  # text
+        await text_checker(attempt)
+
+
+if __name__ == "__main__":
+    asyncio.run(start(*sys.argv))

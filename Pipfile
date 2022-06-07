@@ -1,0 +1,15 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+motor = "==2.5.1"
+black = "*"
+dnspython = "==2.2.0"
+psutil = "*"
+python-dotenv = "*"
+
+[dev-packages]
+pylint = "*"
+pycodestyle = "*"

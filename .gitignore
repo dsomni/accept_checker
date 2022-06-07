@@ -1,5 +1,7 @@
 logs/*
-configs.json
+pascalCompiler/*
+pypyCompiler/*
+Pipfile.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

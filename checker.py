@@ -1,168 +1,350 @@
+from base64 import encode
 import sys
 import subprocess
-from multiprocessing import Process
 import os
-import signal
-import importlib.util
+from time import sleep, time
 import psutil
 import json
+import concurrent.futures as pool
+from typing import Tuple, List
+
+from utils import get_mem_usage_func, kill_process_tree, setup
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(CURRENT_DIR)
 
 configs = {}
-with open(os.path.abspath(os.path.join(CURRENT_DIR, 'configs.json')), "r") as file:
-  configs = json.load(file)
-TIMEOUT = float(configs['TIMEOUT'])
-TIMEOUT_COMPILE = float(configs['TIMEOUT_COMPILE'])
+with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
+    configs = json.load(file)
+
+DEFAULT_TIME_LIMIT = float(configs["DEFAULT_TIME_LIMIT"])
+DEFAULT_MEMORY_LIMIT = int(configs["DEFAULT_MEMORY_LIMIT"])
+
+MAX_TOTAL_SLEEP_K = 4
+CHECKER_PASS_OUTPUT = "1"
+
+INCREASE_TIMEOUT_K = 10
+INCREASE_MEMORY_K = 64
+
+CHECKER_CONSTRAINTS = (DEFAULT_TIME_LIMIT*INCREASE_TIMEOUT_K, DEFAULT_MEMORY_LIMIT*INCREASE_MEMORY_K)
 
 
-
-def get_tests(path, n):
-  tests = []
-  for i in range(n):
-    with open(os.path.abspath(os.path.join(path, f'input{i}.log')), 'r') as inp, open(os.path.abspath(os.path.join(path, f'output{i}.log')), 'r') as out:
-      tests.append([''.join(inp.readlines()),
-             ''.join(out.readlines())])
-  return tests
-
-
-def check_module(module_name):
-  module_spec = importlib.util.find_spec(module_name)
-  if module_spec is None:
-    return None
-  else:
-    return module_spec
-
-
-def import_module_from_spec(module_spec):
-  module = importlib.util.module_from_spec(module_spec)
-  module_spec.loader.exec_module(module)
-  return module
-
-
-def setup(module_name, folder, program_name):
-  module_spec = check_module(module_name)
-  module = import_module_from_spec(module_spec)
-  return (module.cmd_compile(folder, program_name), module.cmd_run(folder, program_name), module.running_offset)
-
-
-def compile_program(folder, cmd_compile):
-  with open(os.path.abspath(os.path.join(folder, 'compile_out.log')), 'w') as out, open(os.path.abspath(os.path.join(folder, 'compile_err.log')), 'w') as err:
+def compile_program(cmd_compile, logs, compile_offset, get_mem):
     try:
-      code = subprocess.check_call(
-        cmd_compile, stdin=subprocess.PIPE, stdout=out, stderr=err, timeout=TIMEOUT_COMPILE)
-      return 0
+        returncode, result, errs = limit_process(
+            cmd_compile, None, CHECKER_CONSTRAINTS, (0, compile_offset, 0), get_mem
+        )
+        if returncode != 0:
+            logs.append(f"Compiler error: {str(errs)}")
+            return 1
     except Exception as e:
-      return 1
+        logs.append(f"Error during compilation: {str(e)}")
+        return 1
 
 
-def write_result(result, results_folder, idx):
-  with open(os.path.abspath(os.path.join(results_folder, str(idx))), 'w') as out:
-    out.write(f'{result[0]}\n{result[1]}\n{result[2]}\n')
+def generate_results_ce(results):
+    results[0] = 3
+    for i in range(1, len(results)):
+        results[i] = 6
+    return results
 
 
-def generate_results_ce(results_folder, n):
-  for i in range(n):
-    write_result([i+1, 'CE', 'Compilation Error'], results_folder, i)
+def generate_results_se(results):
+    for i in range(len(results)):
+        results[i] = 5
+    return results
 
 
-def kill_process_tree(pid):
-  try:
-    parent = psutil.Process(pid)
-    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
-      child.kill()
-    parent.kill()
-  except:
-    pass
-
-def run_program(test_input, idx, folder, cmd_run, running_offset):
-  with open(os.path.abspath(os.path.join(folder, f'out{idx}.log')), 'w') as out, open(os.path.abspath(os.path.join(folder, f'err{idx}.log')), 'w') as err:
-    program_call = subprocess.Popen(
-      cmd_run,
-      stdin=subprocess.PIPE,
-      stdout=out, stderr=err,
-      text=True)
-    try:
-      program_call.communicate(
-        input=test_input, timeout=TIMEOUT + running_offset)
-      return program_call.poll()  # 0 - OK, 1 - RE
-    # except subprocess.TimeoutExpired:
-    except Exception as e:
-      try:
-        kill_process_tree(program_call.pid)
-      except:
-        program_call.kill()
-
-  with open(os.path.abspath(os.path.join(folder, f'err{idx}.log')), 'r') as err:
-    if len(err.readlines()):
-      return 1  # RE
-  return 3  # TL
+def generate_results_nt(results):
+    for i in range(len(results)):
+        results[i] = 6
+    return results
 
 
-def compare_results(test_output, idx, folder):
-  with open(os.path.abspath(os.path.join(folder, f'out{idx}.log')), 'r') as out:
-    program_output = out.readlines()
-    test_output = list(
-      map(lambda x: x+'\n', list(test_output.split('\n'))))
-    if (len(test_output) != len(program_output)):
-      return 2  # WA
+def compare_results(result, test_output):
+    result = list(result.strip().split("\n"))
+    test_output = list(test_output.split("\n"))
+    if len(test_output) != len(result):
+        return False
     for i in range(len(test_output)):
-      if (str(program_output[i]).strip() != str(test_output[i]).strip()):
-        return 2  # WA
-    return 0
+        if str(result[i]).strip() != str(test_output[i]).strip():
+            return False
+    return True
 
 
-def generate_result(code, idx):
-  if code == 0:
-    return [idx+1, 'OK', 'OK']
-  elif code == 1:
-    return [idx+1, 'RE', 'Runtime Error']
-  elif code == 2:
-    return [idx+1, 'WA', 'Wrong Answer']
-  elif code == 3:
-    return [idx+1, 'TL', 'Time Limit']
+
+def check_info(process, timeout, memory_limit, get_mem):
+    sleep_time = 0.01
+    total_sleep = 0
+    try:
+        while process.is_running():
+            cpu = sum(process.cpu_times()[:-1])
+
+            if cpu > timeout or cpu > timeout*MAX_TOTAL_SLEEP_K:
+                process.kill()
+                return 1 # TL
+            mem = get_mem(process.memory_info())
+            if mem > memory_limit:
+                process.kill()
+                return 7 # ML
+            sleep(sleep_time)
+            total_sleep += sleep_time
+    except:
+       pass
+    return 4 if process.returncode and process.returncode != 0 else 0 # RE
 
 
-def check_test(test, idx, folder, cmd_run, results_folder, running_offset):
-  test_input, test_output = test
-  code = run_program(test_input, idx, folder, cmd_run, running_offset)
-  if code == 0:
-    code = compare_results(test_output, idx, folder)
+def limit_process(cmd_run, test_input, constraints, offsets, get_mem):
+    compile_offset, run_offset, mem_offset = offsets
+    constraints_time, constraints_memory = constraints
 
-  write_result(generate_result(code, idx), results_folder, idx)
+    timeout = DEFAULT_TIME_LIMIT + run_offset
+    if constraints_time:
+        timeout = constraints_time + run_offset
+
+    memory_limit = DEFAULT_MEMORY_LIMIT + mem_offset
+    if constraints_memory:
+        memory_limit = constraints_memory + mem_offset
+
+    process = psutil.Popen(
+        cmd_run,
+        text=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding='utf8'
+    )
+    with pool.ThreadPoolExecutor() as executor:
+        info = executor.submit(check_info, process, timeout, memory_limit, get_mem)
+        pg = executor.submit(process.communicate, input=test_input)
+
+        returncode = info.result()
+
+    result = None
+    result, errs = pg.result()
+    return returncode, result, errs
 
 
-if __name__ == "__main__":
-  ''' Get args '''
-  module_name = sys.argv[1]
-  folder = sys.argv[2]
-  program_name = sys.argv[3]
-  tests = get_tests(sys.argv[4], int(sys.argv[5]))
-  tests_number = int(sys.argv[5])
-  results_folder = sys.argv[6]
+def run_program(
+    test_input, test_output, cmd_run, constraints, offsets, get_mem
+):
+    process = None
+    verdict = 5
+    try:
 
-  try:
-    ''' Get cmd commands '''
-    cmd_compile, cmd_run, running_offset = setup(module_name, folder, program_name)
+        returncode, result, errs = limit_process(
+            cmd_run, test_input, constraints, offsets, get_mem
+        )
+        if returncode != 0:
+            verdict = returncode # see: check_info()
+        elif compare_results(result, test_output):
+            verdict = 0  # OK
+        else:
+            verdict = 2  # WA
 
-    ''' Compilation '''
-    code = compile_program(folder, cmd_compile)
-    if (code == 1):
-      generate_results_ce(results_folder, tests_number)
-      exit(0)
+    except psutil.Error as e:
+        print(e)
+        verdict = 4  # RE
+    except BaseException as e:
+        verdict = 5
+    if process:
+        kill_process_tree(process.pid)
+    return verdict
 
-    ''' Running & Testing '''
-    processes = []
-    for index, test in enumerate(tests):
-      process = Process(target=check_test, args=(
-        test, index, folder, cmd_run, results_folder, running_offset))
-      processes.append(process)
-      process.start()
-    for process in processes:
-      process.join()
 
-    exit(0)
-  except Exception as e:
-    print(e)
-    exit(0)
+def check_test(testResult, idx, cmd_run, constraints, offsets, get_mem):
+    test_input = testResult["test"]["inputData"]
+    test_output = testResult["test"]["outputData"]
+    verdict = run_program(
+        test_input, test_output, cmd_run, constraints, offsets, get_mem
+    )
+    return (idx, verdict)
+
+
+CPU_NUMBER = os.cpu_count() or 0
+MAX_WORKERS = min(16, CPU_NUMBER)
+
+
+def checker(
+    module_spec,
+    folder_path,
+    program_name,
+    tests,
+    constraints,
+    offsets,
+) -> Tuple[List[int], List[str]]:
+    results = [6] * len(tests)
+    logs = []
+    compile_offset = offsets[0]
+    try:
+        """Get cmd commands"""
+        cmd_compile, cmd_run = setup(module_spec, folder_path, program_name)
+        get_mem_usage = get_mem_usage_func(module_spec)
+
+        """ Compilation """
+        code = compile_program(cmd_compile, logs, compile_offset, get_mem_usage)
+        if code == 1:
+            return (generate_results_ce(results), logs)
+
+        """ Running & Testing """
+        with pool.ThreadPoolExecutor(max_workers=5) as executor:
+            processes = [
+                executor.submit(
+                    check_test,
+                    test,
+                    index,
+                    cmd_run,
+                    constraints,
+                    offsets,
+                    get_mem_usage,
+                )
+                for index, test in enumerate(tests)
+            ]
+
+            for process in pool.as_completed(processes):
+                idx, verdict = process.result()
+                results[idx] = verdict
+
+        return (results, logs)
+    except Exception as e:
+        print("Exception in Checker", e)
+        return (generate_results_se(results), [f"Checker Error: {str(e)}"])
+
+
+
+def check_output(program_input, program_output, checker_cmd_run, checker_offsets, get_mem):
+    process = None
+    verdict = 6
+    log = ""
+    try:
+        returncode, result, errs = limit_process(
+            checker_cmd_run,
+            program_input + "\n" + program_output,
+            CHECKER_CONSTRAINTS,
+            checker_offsets,
+            get_mem,
+        )
+        if returncode != 0:
+            verdict = 2  # RE
+            log = f"Error when running custom checker: {errs}"
+        elif compare_results(result, CHECKER_PASS_OUTPUT):
+            verdict = 0
+        else:
+            verdict = 2
+    except subprocess.TimeoutExpired as e:
+        log = f"Custom checker: {str(e)}"
+        verdict = 2  # TL
+    except subprocess.SubprocessError as e:
+        log = f"Error when running custom checker: {str(e)}"
+        verdict = 2  # RE
+    except BaseException as e:
+        log = f"Error when running custom checker: {str(e)}"
+        verdict = 2
+    if process:
+        kill_process_tree(process.pid)
+    return (verdict, log)
+
+
+def check_test_checker(
+    testResult,
+    idx,
+    cmd_run,
+    constraints,
+    offsets,
+    get_mem,
+    checker_cmd_run,
+    checker_offsets,
+    get_checker_mem,
+):
+    test_input = testResult["test"]["inputData"]
+    process = None
+    verdict = 5
+    log = ""
+    try:
+        returncode, result, errs = limit_process(
+            cmd_run, test_input, constraints, offsets, get_mem
+        )
+        if returncode != 0:
+            verdict = 4  # RE
+        else:
+            verdict, log = check_output(
+                test_input, result, checker_cmd_run, checker_offsets, get_checker_mem
+            )
+    except subprocess.TimeoutExpired as e:
+        verdict = 1  # TL
+    except subprocess.SubprocessError as e:
+        verdict = 4  # RE
+    except BaseException as e:
+        verdict = 5
+    if process:
+        kill_process_tree(process.pid)
+    return (idx, verdict, log)
+
+
+def custom(
+    module_spec,
+    folder_path,
+    program_name,
+    tests,
+    constraints,
+    offsets,
+    checker_module_spec,
+    checker_name,
+    checker_offsets
+) -> Tuple[List[int], List[str]]:
+    results = [6] * len(tests)
+    logs = []
+    checker_compile_offset, checker_run_offset, checker_mem_offset = checker_offsets
+    compile_offset, run_offset, mem_offset = offsets
+    constraints_time, constraints_memory = constraints
+    try:
+
+        """Get cmd commands Checker"""
+
+        checker_cmd_compile, checker_cmd_run = setup(checker_module_spec, folder_path, checker_name)
+        get_checker_mem = get_mem_usage_func(checker_module_spec)
+
+        """ Compilation Checker"""
+        code = compile_program(checker_cmd_compile, logs, checker_compile_offset, get_checker_mem)
+        if code == 1:
+            logs.append("Error when compiling custom checker")
+            return (generate_results_nt(results), logs)
+
+        """Get cmd commands"""
+        cmd_compile, cmd_run = setup(module_spec, folder_path, program_name)
+        get_mem = get_mem_usage_func(module_spec)
+
+        """ Compilation """
+
+        code = compile_program(cmd_compile, logs, compile_offset, get_mem)
+        if code == 1:
+            return (generate_results_ce(results), logs)
+
+        """ Running & Testing """
+        with pool.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            processes = [
+                executor.submit(
+                    check_test_checker,
+                    test,
+                    index,
+                    cmd_run,
+                    constraints,
+                    offsets,
+                    get_mem,
+                    checker_cmd_run,
+                    checker_offsets,
+                    get_checker_mem,
+                )
+                for index, test in enumerate(tests)
+            ]
+
+            for process in pool.as_completed(processes):
+                idx, verdict, log = process.result()
+                if log != "":
+                    logs.append(log)
+                results[idx] = verdict
+
+        return (results, logs)
+    except Exception as e:
+        print("Exception in Checker", e)
+        return (generate_results_se(results), [f"Custom checker Error: {str(e)}"])

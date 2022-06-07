@@ -1,6 +1,6 @@
 {
-  "TIMEOUT": "1.3",
-  "TIMEOUT_COMPILE": "5",
+  "DEFAULT_TIME_LIMIT": "1",
+  "DEFAULT_MEMORY_LIMIT": "16777216",
   "LANGS": {
     "java": "javaChecker",
     "python": "pythonChecker",
@@ -8,17 +8,18 @@
     "cpp": "cppChecker",
     "pascal": "pascalChecker"
   },
-  "COMPILER_PATHES": {
-    "PYPY": "/home/melaveetha/Programs/pypy/bin/pypy3",
+  "COMPILER_PATHS": {
+    "PYPY": "pypy3",
     "CPP": "g++",
     "PASCAL": "pabcnetc",
     "JAVA": "javac"
   },
-  "RUNNING_OFFSET": {
-    "CPP": 0,
-    "PYTHON": 0,
-    "PASCAL": 1650,
-    "JAVA": 9999,
-    "PYPY": 0
+  "LISTENER_OPTIONS": {
+    "sleep_timeout_s": "3",
+    "langs_refetch_timeout_s": "1800",
+    "cpu_utilization": "0.6"
+  },
+  "MANAGER_OPTIONS": {
+    "attempts_folder": "programs"
   }
 }
