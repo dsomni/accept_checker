@@ -6,7 +6,15 @@ import sys
 from checker import checker
 import asyncio
 
-from utils import connect_to_db, create_program_file, delete_program_folder, generate_program_path, get_extension, get_module, send_alert
+from utils import (
+    connect_to_db,
+    create_program_file,
+    delete_program_folder,
+    generate_program_path,
+    get_extension,
+    get_module,
+    send_alert,
+)
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as file:
@@ -25,11 +33,13 @@ async def save_verdict(attempt_spec, verdict, database):
     user_task = await database["user_task_attempt"].find_one({"attempt": attempt_spec})
     if not user_task:
         return False
-    await verdict_coll.update_one(
-        {"user": user_task["user"], "task": user_task["task"], "verdict": {"$ne": 0}},
-        {"$set": {"verdict": verdict}},
-        True,
-    )
+    res = await verdict_coll.find_one({"user": user_task["user"], "task": user_task["task"]})
+    if not res or res["verdict"] != 0:
+        await verdict_coll.update_one(
+            {"user": user_task["user"], "task": user_task["task"], "verdict": {"$ne": 0}},
+            {"$set": {"verdict": verdict}},
+            True,
+        )
     return True
 
 
@@ -37,17 +47,17 @@ async def save_attempt_results(spec, tests, results, logs, collection):
     for i in range(len(tests)):
         tests[i]["verdict"] = results[i]
 
-    verdict = len(tests) - 1
-    for idx, result in enumerate(tests):
+    verdict = 0
+    for result in tests:
         if result["verdict"] != 0:
-            verdict = idx
+            verdict = result["verdict"]
             break
 
-    r = await collection.update_one(
+    await collection.update_one(
         {"spec": spec}, {"$set": {"status": 2, "verdict": verdict, "results": tests, "logs": logs}}
     )
 
-    return r.modified_count == 1
+    return verdict
 
 
 async def set_testing(spec, collection):
@@ -64,8 +74,6 @@ async def save_results(spec, tests, results, logs):
     collection = database["attempt"]
     await delete_from_pending(spec, database["pending_task_attempt"])
     verdict = await save_attempt_results(spec, tests, results, logs, collection)
-    if not verdict:
-        return False
     result = await save_verdict(spec, verdict, database)
     return result
 
@@ -97,11 +105,13 @@ def get_constraints(attempt):
         constraints_memory = constraints["memory"]
     return constraints_time, constraints_memory
 
+
 def get_offsets(language):
     compile_offset = language["compileOffset"]
     run_offset = language["runOffset"]
     mem_offset = language["memOffset"]
     return compile_offset, run_offset, mem_offset
+
 
 @soft_run
 async def tests_checker(attempt, language) -> bool:
@@ -173,6 +183,7 @@ async def text_checker(attempt) -> bool:
 
 
 CHECKER_NAME = "checker"
+
 
 @soft_run
 async def custom_checker(attempt, language, checker) -> bool:

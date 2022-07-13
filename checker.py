@@ -26,7 +26,7 @@ CHECKER_PASS_OUTPUT = "1"
 INCREASE_TIMEOUT_K = 10
 INCREASE_MEMORY_K = 64
 
-CHECKER_CONSTRAINTS = (DEFAULT_TIME_LIMIT*INCREASE_TIMEOUT_K, DEFAULT_MEMORY_LIMIT*INCREASE_MEMORY_K)
+CHECKER_CONSTRAINTS = (DEFAULT_TIME_LIMIT * INCREASE_TIMEOUT_K, DEFAULT_MEMORY_LIMIT * INCREASE_MEMORY_K)
 
 
 def compile_program(cmd_compile, logs, compile_offset, get_mem):
@@ -72,7 +72,6 @@ def compare_results(result, test_output):
     return True
 
 
-
 def check_info(process, timeout, memory_limit, get_mem):
     sleep_time = 0.01
     total_sleep = 0
@@ -80,18 +79,18 @@ def check_info(process, timeout, memory_limit, get_mem):
         while process.is_running():
             cpu = sum(process.cpu_times()[:-1])
 
-            if cpu > timeout or cpu > timeout*MAX_TOTAL_SLEEP_K:
+            if cpu > timeout or cpu > timeout * MAX_TOTAL_SLEEP_K:
                 process.kill()
-                return 1 # TL
+                return 1  # TL
             mem = get_mem(process.memory_info())
             if mem > memory_limit:
                 process.kill()
-                return 7 # ML
+                return 7  # ML
             sleep(sleep_time)
             total_sleep += sleep_time
     except:
-       pass
-    return 4 if process.returncode and process.returncode != 0 else 0 # RE
+        pass
+    return 4 if process.returncode and process.returncode != 0 else 0  # RE
 
 
 def limit_process(cmd_run, test_input, constraints, offsets, get_mem):
@@ -107,12 +106,7 @@ def limit_process(cmd_run, test_input, constraints, offsets, get_mem):
         memory_limit = constraints_memory + mem_offset
 
     process = psutil.Popen(
-        cmd_run,
-        text=True,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        encoding='utf8'
+        cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8"
     )
     with pool.ThreadPoolExecutor() as executor:
         info = executor.submit(check_info, process, timeout, memory_limit, get_mem)
@@ -125,18 +119,14 @@ def limit_process(cmd_run, test_input, constraints, offsets, get_mem):
     return returncode, result, errs
 
 
-def run_program(
-    test_input, test_output, cmd_run, constraints, offsets, get_mem
-):
+def run_program(test_input, test_output, cmd_run, constraints, offsets, get_mem):
     process = None
     verdict = 5
     try:
 
-        returncode, result, errs = limit_process(
-            cmd_run, test_input, constraints, offsets, get_mem
-        )
+        returncode, result, errs = limit_process(cmd_run, test_input, constraints, offsets, get_mem)
         if returncode != 0:
-            verdict = returncode # see: check_info()
+            verdict = returncode  # see: check_info()
         elif compare_results(result, test_output):
             verdict = 0  # OK
         else:
@@ -155,9 +145,7 @@ def run_program(
 def check_test(testResult, idx, cmd_run, constraints, offsets, get_mem):
     test_input = testResult["test"]["inputData"]
     test_output = testResult["test"]["outputData"]
-    verdict = run_program(
-        test_input, test_output, cmd_run, constraints, offsets, get_mem
-    )
+    verdict = run_program(test_input, test_output, cmd_run, constraints, offsets, get_mem)
     return (idx, verdict)
 
 
@@ -211,7 +199,6 @@ def checker(
         return (generate_results_se(results), [f"Checker Error: {str(e)}"])
 
 
-
 def check_output(program_input, program_output, checker_cmd_run, checker_offsets, get_mem):
     process = None
     verdict = 6
@@ -261,15 +248,11 @@ def check_test_checker(
     verdict = 5
     log = ""
     try:
-        returncode, result, errs = limit_process(
-            cmd_run, test_input, constraints, offsets, get_mem
-        )
+        returncode, result, errs = limit_process(cmd_run, test_input, constraints, offsets, get_mem)
         if returncode != 0:
             verdict = 4  # RE
         else:
-            verdict, log = check_output(
-                test_input, result, checker_cmd_run, checker_offsets, get_checker_mem
-            )
+            verdict, log = check_output(test_input, result, checker_cmd_run, checker_offsets, get_checker_mem)
     except subprocess.TimeoutExpired as e:
         verdict = 1  # TL
     except subprocess.SubprocessError as e:
@@ -290,7 +273,7 @@ def custom(
     offsets,
     checker_module_spec,
     checker_name,
-    checker_offsets
+    checker_offsets,
 ) -> Tuple[List[int], List[str]]:
     results = [6] * len(tests)
     logs = []
