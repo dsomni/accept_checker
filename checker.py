@@ -82,7 +82,7 @@ def check_info(process, timeout, memory_limit, get_mem):
             if cpu > timeout or cpu > timeout * MAX_TOTAL_SLEEP_K:
                 process.kill()
                 return 1  # TL
-            mem = get_mem(process.memory_info())
+            mem = get_mem(process.memory_info()) #bytes
             if mem > memory_limit:
                 process.kill()
                 return 7  # ML
@@ -104,6 +104,8 @@ def limit_process(cmd_run, test_input, constraints, offsets, get_mem):
     memory_limit = DEFAULT_MEMORY_LIMIT + mem_offset
     if constraints_memory:
         memory_limit = constraints_memory + mem_offset
+
+    memory_limit = memory_limit * 1024 * 1024 *8  # Mb -> bytes
 
     process = psutil.Popen(
         cmd_run, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8"

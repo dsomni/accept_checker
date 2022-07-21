@@ -1,6 +1,6 @@
 {
   "DEFAULT_TIME_LIMIT": "1",
-  "DEFAULT_MEMORY_LIMIT": "16777216",
+  "DEFAULT_MEMORY_LIMIT": "16",
   "LANGS": {
     "java": "javaChecker",
     "python": "pythonChecker",
