@@ -5,6 +5,7 @@ from checker import custom
 import sys
 from checker import checker
 import asyncio
+from math import floor
 
 from utils import (
     connect_to_db,
@@ -48,16 +49,57 @@ async def save_attempt_results(spec, tests, results, logs, collection):
         tests[i]["verdict"] = results[i]
 
     verdict = 0
+    verdictTest = 0
     for result in tests:
         if result["verdict"] != 0:
             verdict = result["verdict"]
             break
+        verdictTest += 1
 
     await collection.update_one(
         {"spec": spec}, {"$set": {"status": 2, "verdict": verdict, "results": tests, "logs": logs}}
     )
 
-    return verdict
+    return (verdict, verdictTest)
+
+
+async def save_task_results(attempt, author: str, task: str, results, verdict, verdictTest, collection):
+    spec = attempt["spec"]
+
+    passedTests = len(list(filter(lambda result: result == 0, results)))
+    percentTests = floor(passedTests / len(results) * 100)
+
+    current_attempt = {
+        "attempt": spec,
+        "date": attempt["date"],
+        "passedTests": passedTests,
+        "percentTests": percentTests,
+        "verdict": verdict,
+        "verdictTest": verdictTest,
+    }
+
+    results_db = await collection.find_one({"task": task, "user": author})
+
+    if not results_db or len(results_db["bests"]) == 0:
+        best = None
+    else:
+        best = results_db["bests"][-1]
+    new_best = None
+
+    if best and (best["verdict"] == verdict == 0 or best["percentTests"] > percentTests):
+        new_best = best
+        new_best["date"] = attempt["date"]
+    else:
+        new_best = current_attempt
+
+    if not results_db:
+        await collection.insert_one({"task": task, "user": author, "results": [current_attempt], "bests": [new_best]})
+    else:
+        await collection.update_one(
+            {"task": task, "user": author}, {"$push": {"results": current_attempt, "bests": new_best}}
+        )
+
+    return True
 
 
 async def set_testing(spec, collection):
@@ -70,25 +112,27 @@ async def delete_from_pending(spec, collection):
     return result.deleted_count == 1
 
 
-async def save_results(spec, tests, results, logs):
+async def save_results(attempt, author, task, tests, results, logs):
     collection = database["attempt"]
+    spec = attempt["spec"]
     await delete_from_pending(spec, database["pending_task_attempt"])
-    verdict = await save_attempt_results(spec, tests, results, logs, collection)
+    (verdict, verdictTest) = await save_attempt_results(spec, tests, results, logs, collection)
+    await save_task_results(attempt, author, task, results, verdict, verdictTest, database["user_task_result"])
     result = await save_verdict(spec, verdict, database)
     return result
 
 
 def soft_run(func):
-    async def inner(attempt, *args):
+    async def inner(attempt, author: str, task: str, *args):
         try:
-            await func(attempt, *args)
+            await func(attempt, author, task, *args)
         except BaseException as e:
             tests = attempt["results"]
             spec = attempt["spec"]
             await send_alert("ManagerError", f"{spec}\n{e}")
             delete_program_folder(generate_program_path(FOLDER, spec))
             try:
-                await save_results(spec, tests, [5] * len(tests), [str(e)])
+                await save_results(spec, author, task, tests, [5] * len(tests), [str(e)])
             except:
                 await send_alert("ManagerError (when saving results)", f"{spec}\n{str(e)}")
             return False
@@ -114,7 +158,7 @@ def get_offsets(language):
 
 
 @soft_run
-async def tests_checker(attempt, language) -> bool:
+async def tests_checker(attempt, author: str, task: str, language) -> bool:
     folder_path = None
     collection = database["attempt"]
 
@@ -145,7 +189,7 @@ async def tests_checker(attempt, language) -> bool:
     delete_program_folder(folder_path)
 
     """ Save result """
-    return await save_results(spec, tests, results, logs)
+    return await save_results(attempt, author, task, tests, results, logs)
 
 
 def compare_strings(test: str, answer: str) -> int:
@@ -158,7 +202,7 @@ def compare_strings(test: str, answer: str) -> int:
 
 
 @soft_run
-async def text_checker(attempt) -> bool:
+async def text_checker(attempt, author, task) -> bool:
     collection = database["attempt"]
 
     tests = attempt["results"]
@@ -179,14 +223,14 @@ async def text_checker(attempt) -> bool:
             results.append(compare_strings(test_result["test"]["outputData"], answers[i]))
 
     """ Save result """
-    return await save_results(spec, tests, results, [])
+    return await save_results(attempt, author, task, tests, results, [])
 
 
 CHECKER_NAME = "checker"
 
 
 @soft_run
-async def custom_checker(attempt, language, checker) -> bool:
+async def custom_checker(attempt, author: str, task: str, language, checker) -> bool:
     checker_code = checker["sourceCode"]
     checker_lang = checker["language"]
 
@@ -196,7 +240,7 @@ async def custom_checker(attempt, language, checker) -> bool:
     tests = attempt["results"]
 
     if not checker_code:
-        return await save_results(spec, tests, [6] * len(tests), ["No checker specified"])
+        return await save_results(attempt, author, task, tests, [6] * len(tests), ["No checker specified"])
 
     constraints = get_constraints(attempt)
 
@@ -235,11 +279,13 @@ async def custom_checker(attempt, language, checker) -> bool:
     delete_program_folder(folder_path)
 
     """ Save result """
-    return await save_results(spec, tests, results, logs)
+    return await save_results(attempt, author, task, tests, results, logs)
 
 
 async def start(*args):
     attempt_spec = args[1]
+    author = args[2]
+    task = args[3]
 
     attempt = await database["attempt"].find_one({"spec": attempt_spec})
 
@@ -252,18 +298,18 @@ async def start(*args):
 
         language = await database["language"].find_one({"spec": attempt["language"]})
         if check_type == 0:
-            await tests_checker(attempt, language)
+            await tests_checker(attempt, author, task, language)
         else:  # check_type == 1
             checker = queue_item["checker"]
             checker_language = await database["language"].find_one({"spec": checker["language"]})
             checker["language"] = checker_language
             if checker:
-                await custom_checker(attempt, language, checker)
+                await custom_checker(attempt, author, task, language, checker)
             else:
-                await custom_checker(attempt, language, None)
+                await custom_checker(attempt, author, task, language, None)
 
     elif task_type == 1:  # text
-        await text_checker(attempt)
+        await text_checker(attempt, author, task)
 
 
 if __name__ == "__main__":
