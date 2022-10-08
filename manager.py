@@ -51,10 +51,10 @@ async def save_attempt_results(spec, tests, results, logs, collection):
     verdict = 0
     verdictTest = 0
     for result in tests:
+        verdictTest += 1
         if result["verdict"] != 0:
             verdict = result["verdict"]
             break
-        verdictTest += 1
 
     await collection.update_one(
         {"spec": spec}, {"$set": {"status": 2, "verdict": verdict, "results": tests, "logs": logs}}
