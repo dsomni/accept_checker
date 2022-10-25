@@ -29,19 +29,11 @@ FOLDER = attempts_folder or "programs"
 database = connect_to_db()
 
 
-async def save_verdict(attempt_spec, verdict, database):
-    verdict_coll = database["user_task_verdict"]
-    user_task = await database["user_task_attempt"].find_one({"attempt": attempt_spec})
-    if not user_task:
-        return False
-    res = await verdict_coll.find_one({"user": user_task["user"], "task": user_task["task"]})
-    if not res or res["verdict"] != 0:
-        await verdict_coll.update_one(
-            {"user": user_task["user"], "task": user_task["task"], "verdict": {"$ne": 0}},
-            {"$set": {"verdict": verdict}},
-            True,
-        )
-    return True
+async def save_status(attempt_spec, database):
+    status_collection = database["user_task_status"]
+    result = await status_collection.find_one({"attempt": attempt_spec})
+    if result:
+        await status_collection.update_one({"attempt": attempt_spec}, {"$set": {"status": 2}})
 
 
 async def save_attempt_results(spec, tests, results, logs, collection):
@@ -104,6 +96,11 @@ async def save_task_results(attempt, author: str, task: str, results, verdict, v
 
 async def set_testing(spec, collection):
     result = await collection.update_one({"spec": spec}, {"$set": {"status": 1}})
+    status_collection = database["user_task_status"]
+    status_result = await status_collection.find_one({"attempt": spec})
+    if status_result:
+        await status_collection.update_one({"attempt": spec}, {"$set": {"status": 1}})
+
     return result.matched_count == 1
 
 
@@ -118,8 +115,8 @@ async def save_results(attempt, author, task, tests, results, logs):
     await delete_from_pending(spec, database["pending_task_attempt"])
     (verdict, verdictTest) = await save_attempt_results(spec, tests, results, logs, collection)
     await save_task_results(attempt, author, task, results, verdict, verdictTest, database["user_task_result"])
-    result = await save_verdict(spec, verdict, database)
-    return result
+    await save_status(spec, database)
+    return True
 
 
 def soft_run(func):
