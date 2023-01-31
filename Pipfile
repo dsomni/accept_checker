@@ -4,11 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-motor = "==3.0.0"
-black = "*"
-dnspython = "==2.2.0"
-psutil = "*"
-python-dotenv = "*"
+motor = "===2.5.1"
+black = "===22.6.0"
+dnspython = "===2.2.0"
+psutil = "===5.9.1"
+python-dotenv = "===0.20.0"
 
 [dev-packages]
 pylint = "*"

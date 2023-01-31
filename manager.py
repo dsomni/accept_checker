@@ -6,6 +6,7 @@ import sys
 from checker import checker
 import asyncio
 from math import floor
+import random
 
 from utils import (
     connect_to_db,
@@ -55,8 +56,9 @@ async def save_attempt_results(spec, tests, results, logs, collection):
     return (verdict, verdictTest)
 
 
-async def save_task_results(attempt, author: str, task: str, results, verdict, verdictTest, collection):
+async def save_task_results(attempt, author: str, task: str, results, verdict, verdictTest, database):
     spec = attempt["spec"]
+    collection = database["user_task_result"]
 
     passedTests = len(list(filter(lambda result: result == 0, results)))
     percentTests = floor(passedTests / len(results) * 100)
@@ -76,13 +78,16 @@ async def save_task_results(attempt, author: str, task: str, results, verdict, v
         best = None
     else:
         best = results_db["bests"][-1]
-    new_best = None
 
+    new_best = None
     if best and (best["verdict"] == verdict == 0 or best["percentTests"] > percentTests):
         new_best = best
         new_best["date"] = attempt["date"]
     else:
         new_best = current_attempt
+
+    if (not best or best["verdict"] != 0) and new_best["verdict"] == 0:
+        await database["rating"].update_one({"user": author}, {"$inc": {"score": 1}}, True)
 
     if not results_db:
         await collection.insert_one({"task": task, "user": author, "results": [current_attempt], "bests": [new_best]})
@@ -114,7 +119,7 @@ async def save_results(attempt, author, task, tests, results, logs):
     spec = attempt["spec"]
     await delete_from_pending(spec, database["pending_task_attempt"])
     (verdict, verdictTest) = await save_attempt_results(spec, tests, results, logs, collection)
-    await save_task_results(attempt, author, task, results, verdict, verdictTest, database["user_task_result"])
+    await save_task_results(attempt, author, task, results, verdict, verdictTest, database)
     await save_status(spec, database)
     return True
 
