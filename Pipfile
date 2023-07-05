@@ -5,11 +5,16 @@ name = "pypi"
 
 [packages]
 motor = "===2.5.1"
-black = "===22.6.0"
+black = "*"
 dnspython = "===2.2.0"
 psutil = "===5.9.1"
 python-dotenv = "===0.20.0"
+pytz = "*"
+pylint = "*"
 
 [dev-packages]
 pylint = "*"
 pycodestyle = "*"
+
+[requires]
+python_version = "3.10"
