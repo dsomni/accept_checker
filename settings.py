@@ -1,10 +1,8 @@
 """Contains the SettingsManager class instances"""
-from typing import Optional
 import os
 import json
 
-
-from utils import soft_make_dir
+from utils.soft_mkdir import soft_mkdir
 
 
 class ManagerSettings:
@@ -16,7 +14,7 @@ class ManagerSettings:
     ) -> None:
         self.attempts_folder = attempts_folder
         path = os.path.join(".", attempts_folder)
-        soft_make_dir(path)
+        soft_mkdir(path)
         self.attempts_folder_path = path
 
     def as_dict(self) -> dict:

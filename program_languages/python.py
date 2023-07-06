@@ -3,10 +3,10 @@
 from os import path
 
 
-from checker_languages.basic import CheckerLanguage
+from program_languages.basic import ProgramLanguage
 
 
-class PythonLanguage(CheckerLanguage):
+class PythonLanguage(ProgramLanguage):
     """Python language class"""
 
     def get_offset_codes(self):

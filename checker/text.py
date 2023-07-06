@@ -1,16 +1,17 @@
 """Contains Text Checker class"""
 
 from checker.basic import Checker
+from typing import List, Tuple
 
-from utils import map_verdict
+from utils.basic import map_verdict
 
 
 class TextChecker(Checker):
     """Provides evaluation for text tasks"""
 
     async def start(
-        self, user_answers: list[str], correct_answers: list[str]
-    ) -> tuple[list[int], list[str]]:
+        self, user_answers: List[str], correct_answers: List[str]
+    ) -> Tuple[List[int], List[str]]:
         """Starts checker
 
         Args:

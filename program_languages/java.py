@@ -3,10 +3,10 @@
 from os import path
 
 
-from checker_languages.basic import CheckerLanguage
+from program_languages.basic import ProgramLanguage
 
 
-class JavaLanguage(CheckerLanguage):
+class JavaLanguage(ProgramLanguage):
     """Java language class"""
 
     def __init__(self):

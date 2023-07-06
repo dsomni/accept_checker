@@ -1,21 +1,8 @@
 {
   "default_limits": {
-    "time_seconds": 1,
-    "memory_mb": 16
+    "time_seconds": 10,
+    "memory_mb": 512
   },
-  // "LANGS": {
-  //   "java": "javaChecker",
-  //   "python": "pythonChecker",
-  //   "pypy": "pypyChecker",
-  //   "cpp": "cppChecker",
-  //   "pascal": "pascalChecker"
-  // },
-  // "COMPILER_PATHS": {
-  //   "PYPY": "pypy3",
-  //   "CPP": "g++",
-  //   "PASCAL": "pabcnetc",
-  //   "JAVA": "javac"
-  // },
   "listener": {
     "sleep_timeout_seconds": 3,
     "langs_refetch_timeout_minutes": 30,

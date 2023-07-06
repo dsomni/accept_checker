@@ -1,13 +1,34 @@
 """Contains data models"""
+from typing import List
 
 
 class PendingQueueItem:
     """Pending queue item model"""
 
+    class Checker:
+        """PendingQueueItem Checker class"""
+
+        def __init__(self, checker_dict: dict) -> None:
+            self.language: int = checker_dict["language"]
+            self.source_code: str = checker_dict["sourceCode"]
+
+        def to_dict(self) -> dict:
+            """Converts class to dict object
+
+            Returns:
+                dict
+            """
+            return {
+                "language": self.language,
+                "sourceCode": self.source_code,
+            }
+
     def __init__(self, item_dict: dict) -> None:
         self.task_type: int = item_dict["taskType"]
         self.task_check_type: int = item_dict["taskCheckType"]
-        self.checker: dict = item_dict["checker"]
+        self.checker = None
+        if item_dict["checker"] is not None:
+            self.checker = self.Checker(item_dict["checker"])
 
     def to_dict(self) -> dict:
         """Converts class to dict object
@@ -18,7 +39,7 @@ class PendingQueueItem:
         return {
             "taskType": self.task_type,
             "taskCheckType": self.task_check_type,
-            "checker": self.checker,
+            "checker": self.checker.to_dict() if self.checker else None,
         }
 
 
@@ -82,11 +103,11 @@ class Attempt:
         self.status: int = attempt_dict["status"]
         self.constraints = self.Constraints(attempt_dict["constraints"])
         self.program_text: str = attempt_dict["programText"]
-        self.text_answers: list[str] = attempt_dict["textAnswers"]
+        self.text_answers: List[str] = attempt_dict["textAnswers"]
         self.date: str = attempt_dict["date"]
         self.results = [self.Result(result) for result in attempt_dict["results"]]
         self.verdict: int = attempt_dict["verdict"]
-        self.logs: list[str] = attempt_dict["logs"]
+        self.logs: List[str] = attempt_dict["logs"]
 
     def to_dict(self):
         """Converts class to dict object

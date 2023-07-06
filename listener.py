@@ -13,17 +13,25 @@ from settings import SETTINGS_MANAGER
 class Listener:
     """Listens to database updates"""
 
-    def _get_pending_iterator(self, limit: int = 10):
+    async def _get_pending_items(self, limit: int = 10):
         collection = DATABASE.get_collection(self._pending_attempts_collection_name)
 
-        return collection.aggregate(
+        item_dicts = []
+        async for queue_item in collection.aggregate(
             [
                 {"$match": {"examined": None}},
                 {"$limit": limit},
-                {"$set": {"examined": True}},
                 {"$project": {"author": 1, "task": 1, "attempt": 1}},
             ]
+        ):
+            item_dicts.append(queue_item)
+
+        await collection.update_many(
+            {"attempt": {"$in": list(map(lambda item: item["attempt"], item_dicts))}},
+            {"$set": {"examined": True}},
         )
+
+        return item_dicts
 
     def __init__(self, manager_path: str = os.path.join(".", "manager.py")) -> None:
         self._manager_path = manager_path
@@ -63,7 +71,8 @@ class Listener:
             with pool.ProcessPoolExecutor(max_workers=self.max_workers) as executor:
                 while True:
                     try:
-                        async for queue_item in self._get_pending_iterator():
+                        queue_items = await self._get_pending_items()
+                        for queue_item in queue_items:
                             attempt_spec = queue_item["attempt"]
                             author_login = queue_item["author"]
                             task_spec = queue_item["task"]

@@ -1,12 +1,12 @@
 """Contains languages aggregator"""
 
 
-from checker_languages.basic import CheckerLanguage
-from checker_languages.cpp import CPP_LANGUAGE
-from checker_languages.java import JAVA_LANGUAGE
-from checker_languages.pascal import PASCAL_LANGUAGE
-from checker_languages.pypy import PYPY_LANGUAGE
-from checker_languages.python import PYTHON_LANGUAGE
+from program_languages.basic import ProgramLanguage
+from program_languages.cpp import CPP_LANGUAGE
+from program_languages.java import JAVA_LANGUAGE
+from program_languages.pascal import PASCAL_LANGUAGE
+from program_languages.pypy import PYPY_LANGUAGE
+from program_languages.python import PYTHON_LANGUAGE
 
 LANGUAGES_MAPPING = {
     "python": PYTHON_LANGUAGE,
@@ -17,7 +17,7 @@ LANGUAGES_MAPPING = {
 }
 
 
-def get_language_class(language_short_name: str) -> CheckerLanguage:
+def get_language_class(language_short_name: str) -> ProgramLanguage:
     """Returns suitable language class
 
     Args:

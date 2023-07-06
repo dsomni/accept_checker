@@ -3,24 +3,25 @@
 from time import sleep
 import subprocess
 import concurrent.futures as pool
+from typing import List
 import psutil
 from custom_exceptions import (
     MemoryLimitException,
     RuntimeErrorException,
     TimeLimitException,
-    ServerErrorException,
 )
-from utils import kill_process_tree
+from settings import SETTINGS_MANAGER
+from utils.basic import kill_process_tree
 
 
-DEFAULT_MEM_LIMIT_BYTES = 2 << 15  # 512 MB
-DEFAULT_TIME_LIMIT_SECONDS = 10
+DEFAULT_MEM_LIMIT_BYTES = int(SETTINGS_MANAGER.limits.memory_mb) << 20  # MB to bytes
+DEFAULT_TIME_LIMIT_SECONDS = SETTINGS_MANAGER.limits.time_seconds
 
 
 class CustomProcess:
     """Custom Process class"""
 
-    def __init__(self, cmd: list[str], get_memory_usage):
+    def __init__(self, cmd: List[str], get_memory_usage):
         self.cmd = cmd
         self.get_memory_usage = get_memory_usage
 
@@ -36,17 +37,23 @@ class CustomProcess:
 
                 if cpu_time_usage > time_limit:
                     process.kill()
-                    raise TimeLimitException
+                    raise TimeLimitException("Time Limit")
                 mem_usage = self.get_memory_usage(process.memory_info())  # bytes
                 if mem_usage > memory_limit:
+                    print("MEM USAGE", mem_usage, memory_limit)
                     process.kill()
-                    raise MemoryLimitException
+                    raise MemoryLimitException("Memory Limit")
                 sleep(self.sleep_time)
                 total_sleep += self.sleep_time
-        except psutil.Error as exc:
-            raise ServerErrorException from exc
-        if process.returncode and process.returncode != 0:
-            raise RuntimeErrorException
+        except psutil.Error as exc:  # pylint:disable=W0718
+            print("psutil.Error", exc)
+            pass
+        # except psutil.Error as exc:
+        #     print(process.is_running())
+        #     if process.is_running():
+        #         raise ServerErrorException("psutil.Error") from exc
+        #
+        #     raise RuntimeErrorException("Runtime error")
 
     def run(
         self,
@@ -88,6 +95,9 @@ class CustomProcess:
 
         _ = info_process.result()
         result, _ = program_process.result()
-
+        if process.returncode and process.returncode != 0:
+            print(f"HERE {process.returncode=}")
+            kill_process_tree(process.pid)
+            raise RuntimeErrorException("Runtime error")
         kill_process_tree(process.pid)
         return result

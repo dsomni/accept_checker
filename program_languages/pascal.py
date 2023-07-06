@@ -1,26 +1,26 @@
-"""Contains Cpp Language class"""
+"""Contains Pascal Language class"""
 
 from os import path
 
 
-from checker_languages.basic import CheckerLanguage
+from program_languages.basic import ProgramLanguage
 
 
-class CppLanguage(CheckerLanguage):
-    """Cpp language class"""
+class PascalLanguage(ProgramLanguage):
+    """Pascal language class"""
 
     def __init__(self):
         super().__init__()
-        self.compiler_path: str = "g++"
+        self.compiler_path: str = "pabcnetc"
 
     def get_offset_codes(self):
         return (
-            "int main()\n{\nint a = 0;\nreturn 0;\n }",
-            "int main()\n{\nwhile(true){}\nreturn 0;\n }",
+            "var i:integer; Begin i:=0;End.",
+            "var i:integer; Begin while (true)  do i:=0; End.",
         )
 
     def get_compile_extension(self):
-        return "cpp"
+        return "pas"
 
     def get_run_extension(self):
         return "exe"
@@ -31,15 +31,18 @@ class CppLanguage(CheckerLanguage):
     def get_cmd_compile(self, folder_path: str, program_name: str):
         return [
             self.compiler_path,
-            "-o",
-            path.abspath(path.join(folder_path, program_name)),
             path.abspath(
                 path.join(folder_path, f"{program_name}.{self.get_compile_extension()}")
             ),
         ]
 
     def get_cmd_run(self, folder_path: str, program_name: str):
-        return [path.abspath(path.join(folder_path, f"{program_name}"))]
+        return [
+            "mono",
+            path.abspath(
+                path.join(folder_path, f"{program_name}.{self.get_run_extension()}")
+            ),
+        ]
 
 
-CPP_LANGUAGE = CppLanguage()
+PASCAL_LANGUAGE = PascalLanguage()

@@ -1,33 +1,21 @@
 """General utilities functions"""
 
-
-import asyncio
+from typing import Literal, Union, List
 from datetime import datetime, timezone
 import shutil
-import importlib.util
 import sys
 import time
 import os
-from dotenv import dotenv_values
-import motor.motor_asyncio
 import psutil
 
-from typing import Literal, Union
 
 from database import DATABASE
+from settings import SETTINGS_MANAGER
+from utils.soft_mkdir import soft_mkdir
 
 
 VERDICT_DICT = dict(
-    {
-        "OK": 0,
-        "TL": 1,
-        "WA": 2,
-        "CE": 3,
-        "RE": 4,
-        "SE": 5,
-        "NT": 6,
-        "ML": 7,
-    }
+    {"OK": 0, "TL": 1, "WA": 2, "CE": 3, "RE": 4, "SE": 5, "NT": 6, "ML": 7, "CH": 8}
 )
 
 VerdictType = Union[
@@ -39,6 +27,7 @@ VerdictType = Union[
     Literal["SE"],
     Literal["NT"],
     Literal["ML"],
+    Literal["CH"],
 ]
 
 ATTEMPT_STATUS_DICT = dict(
@@ -61,17 +50,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(CURRENT_DIR)
 
 
-def soft_make_dir(path: str):
-    """Creates folder using specified path
-
-    Args:
-        path (str)
-    """
-    if os.path.exists(path) and os.path.isdir(path):
-        return
-    os.mkdir(path)
-
-
 def map_verdict(verdict: VerdictType) -> int:
     """Maps string verdict to its spec
 
@@ -84,7 +62,7 @@ def map_verdict(verdict: VerdictType) -> int:
     return VERDICT_DICT[verdict]
 
 
-def generate_tests_verdicts(verdict: VerdictType, tests_number: int) -> list[int]:
+def generate_tests_verdicts(verdict: VerdictType, tests_number: int) -> List[int]:
     """Generates same verdict for all tests
 
     Args:
@@ -155,8 +133,10 @@ def create_program_folder(attempt_spec: str) -> str:
         str: path to the folder
     """
     folder_name = f"{attempt_spec}_{datetime.utcnow().timestamp()}"
-    folder_path = os.path.abspath(os.path.join(CURRENT_DIR, folder_name))
-    soft_make_dir(folder_path)
+    folder_path = os.path.abspath(
+        os.path.join(SETTINGS_MANAGER.manager.attempts_folder_path, folder_name)
+    )
+    soft_mkdir(folder_path)
     return folder_path
 
 
@@ -173,66 +153,3 @@ def kill_process_tree(pid: int):
         parent.kill()
     except BaseException:  # pylint:disable=W0718
         pass
-
-
-def connect_to_db():
-    db_configs = dotenv_values(".env") or {}
-    client = motor.motor_asyncio.AsyncIOMotorClient(
-        db_configs["CONNECTION_STRING"] or ""
-    )
-    client.get_io_loop = asyncio.get_running_loop
-    return client.Accept
-
-
-def check_module(module_name):
-    module_name = module_name
-    module_spec = importlib.util.find_spec(module_name)
-    if module_spec is None:
-        return None
-    else:
-        return module_spec
-
-
-def import_module_from_spec(module_spec):
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
-    return module
-
-
-def get_module(lang, langs_configs):
-    module_name = langs_configs[lang]
-    module_spec = check_module(module_name)
-    return module_name, module_spec
-
-
-def get_extension(module_spec):
-    module = import_module_from_spec(module_spec)
-    return module.extension_compile
-
-
-def get_tuner_data(module_spec):
-    module = import_module_from_spec(module_spec)
-    return module.time_offset_code, module.memory_offset_code, module.mem_usage
-
-
-def get_mem_usage_func(module_spec):
-    module = import_module_from_spec(module_spec)
-    return module.mem_usage
-
-
-def get_memory_usage(lang, mem):
-    if lang == "java":
-        return mem.rss
-    return mem.data
-
-
-def generate_program_path(folder, program_name):
-    return os.path.abspath(os.path.join(CURRENT_DIR, folder, program_name))
-
-
-def setup(module_spec, folder, program_name):
-    module = import_module_from_spec(module_spec)
-    return (
-        module.cmd_compile(folder, program_name),
-        module.cmd_run(folder, program_name),
-    )

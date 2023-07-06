@@ -1,13 +1,14 @@
 """Contains Tests Checker class"""
 
+from typing import Tuple, List
 from checker.basic import CodeChecker
-from checker_languages.utils import get_language_class
+from program_languages.utils import get_language_class
 from custom_exceptions import (
     CompilationErrorException,
 )
 from models import Attempt, Language
 
-from utils import generate_tests_verdicts
+from utils.basic import generate_tests_verdicts
 
 
 class TestsChecker(CodeChecker):
@@ -18,7 +19,7 @@ class TestsChecker(CodeChecker):
         attempt: Attempt,
         folder_path: str,
         language: Language,
-    ) -> tuple[list[int], list[str]]:
+    ) -> Tuple[List[int], List[str]]:
         """Starts checker
 
         Args:
@@ -30,7 +31,7 @@ class TestsChecker(CodeChecker):
             tuple[list[int], list[str]]: (verdicts, logs)
         """
 
-        tests: list[Attempt.Result.Test] = [result.test for result in attempt.results]
+        tests: List[Attempt.Result.Test] = [result.test for result in attempt.results]
 
         try:
             language_class = get_language_class(language.short_name)

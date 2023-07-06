@@ -1,10 +1,12 @@
 """Contains Basic Language class"""
 
+from typing import List, Tuple
 
-class CheckerLanguage:
+
+class ProgramLanguage:
     """Basic language abstract class"""
 
-    def get_offset_codes(self) -> tuple[str, str]:
+    def get_offset_codes(self) -> Tuple[str, str]:
         """Returns offset information for the language
 
         Returns:
@@ -44,7 +46,7 @@ class CheckerLanguage:
 
         raise NotImplementedError
 
-    def get_cmd_compile(self, folder_path: str, program_name: str) -> list[str]:
+    def get_cmd_compile(self, folder_path: str, program_name: str) -> List[str]:
         """Returns cmd command to compile the program
 
         Args:
@@ -57,7 +59,7 @@ class CheckerLanguage:
 
         raise NotImplementedError
 
-    def get_cmd_run(self, folder_path: str, program_name: str) -> list[str]:
+    def get_cmd_run(self, folder_path: str, program_name: str) -> List[str]:
         """Returns cmd command to run the program
 
         Args:

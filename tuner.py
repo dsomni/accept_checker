@@ -7,7 +7,7 @@ import psutil
 import os
 import concurrent.futures as pool
 
-from utils import (
+from utils.basic import (
     connect_to_db,
     create_program_file,
     delete_program_folder,
@@ -18,6 +18,7 @@ from utils import (
     send_alert,
     setup,
 )
+
 JAVA_COEFFICIENT = 3.5
 FOLDER = "offset"
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,19 +29,25 @@ with open(os.path.abspath(os.path.join(CURRENT_DIR, "configs.json")), "r") as fi
     attempts_folder = cnf["MANAGER_OPTIONS"]["attempts_folder"]
 
 
-
 database = connect_to_db()
 
 
 def compile_program(cmd_compile, lang, logs):
     try:
         start = time()
-        p = psutil.Popen(cmd_compile, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = psutil.Popen(
+            cmd_compile,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         p.wait()
         return round(time() - start, 3)
     except BaseException as e:
         logs.append(f"Error during compilation {lang}: {str(e)}")
         return None
+
 
 def check_time(process):
     sleep_time = 0.0001
@@ -50,13 +57,20 @@ def check_time(process):
             cpu = sum(process.cpu_times()[:-1])
             sleep(sleep_time)
     except:
-       pass
+        pass
     return cpu + sleep_time
+
 
 def run_program_time(cmd_run, lang, logs):
     p = None
     try:
-        p = psutil.Popen(cmd_run, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = psutil.Popen(
+            cmd_run,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         with pool.ThreadPoolExecutor() as executor:
             info = executor.submit(check_time, p)
             pg = executor.submit(p.wait)
@@ -74,7 +88,13 @@ def run_program_time(cmd_run, lang, logs):
 def run_program_memory(cmd_run, get_mem, lang, logs):
     p = None
     try:
-        p = psutil.Popen(cmd_run, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = psutil.Popen(
+            cmd_run,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         sleep(1)
         mem = get_mem(p.memory_info())
 
@@ -90,14 +110,18 @@ def run_program_memory(cmd_run, get_mem, lang, logs):
 async def save_configs(lang, compile_offset, run_offset, mem_offset, logs, folder_path):
     try:
         if len(logs) > 0:
-            await send_alert(f"Tuner Error {lang}", '\n'.join(logs))
+            await send_alert(f"Tuner Error {lang}", "\n".join(logs))
             print(*logs, sep="\n")
         collection = database["language"]
 
         result = await collection.update_one(
             {"shortName": lang},
             {
-                "$set": {"runOffset": run_offset, "compileOffset": compile_offset, "memOffset": mem_offset},
+                "$set": {
+                    "runOffset": run_offset,
+                    "compileOffset": compile_offset,
+                    "memOffset": mem_offset,
+                },
             },
         )
 
@@ -114,10 +138,13 @@ async def start():
         try:
             module_name, module_spec = get_module(lang, langs_configs)
             extension = get_extension(module_spec)
-            time_offset_code, memory_offset_code, mem_usage = get_tuner_data(module_spec)
+            time_offset_code, memory_offset_code, mem_usage = get_tuner_data(
+                module_spec
+            )
 
-            program_path, folder_path = create_program_file(FOLDER, f"{lang}_t", extension, time_offset_code)
-
+            program_path, folder_path = create_program_file(
+                FOLDER, f"{lang}_t", extension, time_offset_code
+            )
 
             cmd_compile, cmd_run = setup(module_spec, folder_path, f"{lang}_t")
             err = False
@@ -135,13 +162,17 @@ async def start():
             if not run_offset:
                 run_offset = 0
                 err = True
-                await save_configs(lang, compile_offset, run_offset, 0, logs, folder_path)
+                await save_configs(
+                    lang, compile_offset, run_offset, 0, logs, folder_path
+                )
                 continue
-            if lang=="java":
+            if lang == "java":
                 run_offset *= JAVA_COEFFICIENT
             delete_program_folder(folder_path)
 
-            program_path, folder_path = create_program_file(FOLDER, f"{lang}_m", extension, memory_offset_code)
+            program_path, folder_path = create_program_file(
+                FOLDER, f"{lang}_m", extension, memory_offset_code
+            )
 
             cmd_compile, cmd_run = setup(module_spec, folder_path, f"{lang}_m")
 
@@ -149,7 +180,9 @@ async def start():
             compile_offset_m = compile_program(cmd_compile, lang, logs)
             if not compile_offset_m:
                 err = True
-                await save_configs(lang, compile_offset, run_offset, 0, logs, folder_path)
+                await save_configs(
+                    lang, compile_offset, run_offset, 0, logs, folder_path
+                )
                 continue
 
             mem_offset = run_program_memory(cmd_run, mem_usage, lang, logs)
@@ -157,10 +190,12 @@ async def start():
                 err = True
                 mem_offset = 0
 
-            result = await save_configs(lang, compile_offset, run_offset, mem_offset, logs, folder_path)
+            result = await save_configs(
+                lang, compile_offset, run_offset, mem_offset, logs, folder_path
+            )
             print(f"{lang}: {result or err}")
         except BaseException as e:
-            await send_alert(f"Tuner Error {lang}", str(e) + '\n'.join(logs))
+            await send_alert(f"Tuner Error {lang}", str(e) + "\n".join(logs))
     await send_alert(f"Tuner Success", "tuner successfully finished", "success")
 
 

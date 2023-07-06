@@ -2,10 +2,10 @@
 
 from os import path
 
-from checker_languages.basic import CheckerLanguage
+from program_languages.basic import ProgramLanguage
 
 
-class PypyLanguage(CheckerLanguage):
+class PypyLanguage(ProgramLanguage):
     """Pypy language class"""
 
     def __init__(self):
