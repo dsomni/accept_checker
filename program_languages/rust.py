@@ -1,4 +1,4 @@
-"""Contains Pascal Language class"""
+"""Contains Rust Language class"""
 
 from os import path
 

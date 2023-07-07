@@ -1,4 +1,4 @@
-"""Contains Pascal Language class"""
+"""Contains Go Language class"""
 
 from os import path
 

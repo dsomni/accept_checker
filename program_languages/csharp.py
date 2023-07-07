@@ -1,4 +1,4 @@
-"""Contains Cpp Language class"""
+"""Contains C# Language class"""
 
 from os import path
 

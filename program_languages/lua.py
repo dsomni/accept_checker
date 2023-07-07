@@ -1,4 +1,4 @@
-"""Contains NodeJS Language class"""
+"""Contains Lua Language class"""
 
 from os import path
 
@@ -6,24 +6,24 @@ from os import path
 from program_languages.basic import ProgramLanguage
 
 
-class NodeJSLanguage(ProgramLanguage):
+class LuaLanguage(ProgramLanguage):
     """Pascal language class"""
 
     def __init__(self):
         super().__init__()
-        self.compiler_path: str = "node"
+        self.compiler_path: str = "luac"
 
     def get_offset_codes(self):
         return (
             "a=1",
-            "while(true){}",
+            "while true do\nend",
         )
 
     def get_compile_extension(self):
-        return "js"
+        return "lua"
 
     def get_run_extension(self):
-        return ""
+        return "out"
 
     def get_memory_usage(self, memory_info):
         return memory_info.data
@@ -31,7 +31,10 @@ class NodeJSLanguage(ProgramLanguage):
     def get_cmd_compile(self, folder_path: str, program_name: str):
         return [
             self.compiler_path,
-            "--check",
+            "-o",
+            path.abspath(
+                path.join(folder_path, f"{program_name}.{self.get_run_extension()}")
+            ),
             path.abspath(
                 path.join(folder_path, f"{program_name}.{self.get_compile_extension()}")
             ),
@@ -39,9 +42,11 @@ class NodeJSLanguage(ProgramLanguage):
 
     def get_cmd_run(self, folder_path: str, program_name: str):
         return [
-            "node",
-            path.abspath(path.join(folder_path, f"{program_name}")),
+            "lua",
+            path.abspath(
+                path.join(folder_path, f"{program_name}.{self.get_run_extension()}")
+            ),
         ]
 
 
-NODEJS_LANGUAGE = NodeJSLanguage()
+LUA_LANGUAGE = LuaLanguage()
