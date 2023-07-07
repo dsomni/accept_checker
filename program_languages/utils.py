@@ -4,6 +4,7 @@
 from program_languages.basic import ProgramLanguage
 from program_languages.cpp import CPP_LANGUAGE
 from program_languages.csharp import CSHARP_LANGUAGE
+from program_languages.go import GO_LANGUAGE
 from program_languages.java import JAVA_LANGUAGE
 from program_languages.pascal import PASCAL_LANGUAGE
 from program_languages.pypy import PYPY_LANGUAGE
@@ -18,6 +19,7 @@ LANGUAGES_MAPPING = {
     "java": JAVA_LANGUAGE,
     "pascal": PASCAL_LANGUAGE,
     "rust": RUST_LANGUAGE,
+    "go": GO_LANGUAGE,
 }
 
 
