@@ -40,7 +40,6 @@ class CustomProcess:
                     raise TimeLimitException("Time Limit")
                 mem_usage = self.get_memory_usage(process.memory_info())  # bytes
                 if mem_usage > memory_limit:
-                    print("MEM USAGE", mem_usage, memory_limit)
                     process.kill()
                     raise MemoryLimitException("Memory Limit")
                 sleep(self.sleep_time)
@@ -89,7 +88,6 @@ class CustomProcess:
         _ = info_process.result()
         result, _ = program_process.result()
         if process.returncode and process.returncode != 0:
-            print(f"HERE {process.returncode=}")
             kill_process_tree(process.pid)
             raise RuntimeErrorException("Runtime error")
         kill_process_tree(process.pid)

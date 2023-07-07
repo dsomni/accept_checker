@@ -134,7 +134,6 @@ class CodeChecker(Checker):
         except MemoryLimitException:
             verdict = "ML"
         except RuntimeErrorException:
-            print("11111")
             verdict = "RE"
         except ServerErrorException:
             verdict = "SE"

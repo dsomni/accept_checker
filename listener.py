@@ -85,7 +85,6 @@ class Listener:
                             )
 
                     except BaseException as exception:  # pylint:disable=W0718
-                        print()
                         print(exception)
 
                     await asyncio.sleep(self.settings.sleep_timeout_seconds)

@@ -1,4 +1,4 @@
-"""Contains Java Language class"""
+"""Contains Cpp Language class"""
 
 from os import path
 
@@ -6,27 +6,27 @@ from os import path
 from program_languages.basic import ProgramLanguage
 
 
-class JavaLanguage(ProgramLanguage):
-    """Java language class"""
+class CSharpLanguage(ProgramLanguage):
+    """Cpp language class"""
 
     def __init__(self):
         super().__init__()
-        self.compiler_path: str = "javac"
+        self.compiler_path: str = "mcs"
 
     def get_offset_codes(self):
         return (
-            "class Main\n{ public static void main(String args[])\n{\nSystem.out.println(1); } }",
-            "class Main\n{ public static void main(String args[])\n  {\n    while(true){}\n  }\n}",
+            "using System; public class TEST { static public void Main() { int a = 0; }}",
+            "using System; public class TEST {static public void Main(){int a;while(true){a = 0;}}}",
         )
 
     def get_compile_extension(self):
-        return "java"
+        return "cs"
 
     def get_run_extension(self):
-        return "java"
+        return "exe"
 
     def get_memory_usage(self, memory_info):
-        # print(f"{memory_info.data=}\n{memory_info.rss=}")
+        # print(f"{memory_info.data=}\n{memory_info.rss=}\n")
         return memory_info.rss
 
     def get_cmd_compile(self, folder_path: str, program_name: str):
@@ -39,11 +39,11 @@ class JavaLanguage(ProgramLanguage):
 
     def get_cmd_run(self, folder_path: str, program_name: str):
         return [
-            "java",
+            "mono",
             path.abspath(
                 path.join(folder_path, f"{program_name}.{self.get_run_extension()}")
             ),
         ]
 
 
-JAVA_LANGUAGE = JavaLanguage()
+CSHARP_LANGUAGE = CSharpLanguage()

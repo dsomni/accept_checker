@@ -30,7 +30,7 @@ class Database:
         return self.database[collection_name]
 
     async def find_one(
-        self, collection_name: str, match_dict: dict, filter_dict: dict = {}
+        self, collection_name: str, match_dict: dict, filter_dict: Optional[dict] = None
     ):
         """Returns one element from collection
 
