@@ -2,6 +2,7 @@
 
 
 from program_languages.basic import ProgramLanguage
+from program_languages.cobol import COBOL_LANGUAGE
 from program_languages.cpp import CPP_LANGUAGE
 from program_languages.csharp import CSHARP_LANGUAGE
 from program_languages.go import GO_LANGUAGE
@@ -24,6 +25,7 @@ LANGUAGES_MAPPING = {
     "go": GO_LANGUAGE,
     "nodejs": NODEJS_LANGUAGE,
     "lua": LUA_LANGUAGE,
+    "cobol": COBOL_LANGUAGE,
 }
 
 

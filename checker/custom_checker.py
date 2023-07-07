@@ -5,7 +5,12 @@ from checker.basic import CodeChecker
 from custom_process import CustomProcess
 from program_languages.utils import get_language_class
 from models import Attempt, Language, PendingQueueItem
-from utils.basic import VerdictType, generate_tests_verdicts, map_verdict
+from utils.basic import (
+    VerdictType,
+    generate_program_name,
+    generate_tests_verdicts,
+    map_verdict,
+)
 from custom_exceptions import CompilationErrorException
 
 
@@ -79,7 +84,7 @@ class CustomChecker(CodeChecker):
                 ],
             )
 
-        checker_name = f"{attempt.spec}_checker"
+        checker_name = f"{generate_program_name(attempt)}_ch"
 
         try:
             self.write_program_text(
@@ -111,7 +116,7 @@ class CustomChecker(CodeChecker):
             checker_language_class.get_memory_usage,
         )
 
-        program_name = attempt.spec
+        program_name = generate_program_name(attempt)
 
         try:
             self.write_program_text(

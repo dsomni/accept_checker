@@ -8,7 +8,7 @@ from custom_exceptions import (
 )
 from models import Attempt, Language
 
-from utils.basic import generate_tests_verdicts
+from utils.basic import generate_program_name, generate_tests_verdicts
 
 
 class TestsChecker(CodeChecker):
@@ -45,7 +45,7 @@ class TestsChecker(CodeChecker):
                 ],
             )
 
-        program_name = attempt.spec
+        program_name = generate_program_name(attempt)
 
         try:
             self.write_program_text(

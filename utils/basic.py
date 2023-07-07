@@ -10,6 +10,7 @@ import psutil
 
 
 from database import DATABASE
+from models import Attempt
 from settings import SETTINGS_MANAGER
 from utils.soft_mkdir import soft_mkdir
 
@@ -132,7 +133,7 @@ def create_program_folder(attempt_spec: str) -> str:
     Returns:
         str: path to the folder
     """
-    folder_name = f"{attempt_spec}_{datetime.utcnow().timestamp()}"
+    folder_name = f"{attempt_spec}_{int(datetime.utcnow().timestamp()*10**6)}"
     folder_path = os.path.abspath(
         os.path.join(SETTINGS_MANAGER.manager.attempts_folder_path, folder_name)
     )
@@ -153,3 +154,15 @@ def kill_process_tree(pid: int):
         parent.kill()
     except BaseException:  # pylint:disable=W0718
         pass
+
+
+def generate_program_name(attempt: Attempt) -> str:
+    """Generates program name based on attempt
+
+    Args:
+        attempt (Attempt): attempt object
+
+    Returns:
+        str: program name
+    """
+    return attempt.spec[:16]
