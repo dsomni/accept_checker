@@ -6,7 +6,7 @@ from typing import Tuple, Callable, List, Any
 import os
 import subprocess
 from datetime import datetime
-from time import sleep
+import time
 import psutil
 import asyncio
 from database import DATABASE
@@ -22,7 +22,7 @@ class Tuner:
     """Tuner class"""
 
     def _write_program(self, code: str, language: ProgramLanguage) -> str:
-        file_name = f"test_{datetime.utcnow().timestamp()}"
+        file_name = f"test_{int(datetime.utcnow().timestamp()*10**6)}"
         program_path = os.path.abspath(
             os.path.join(
                 self.folder_path,
@@ -55,7 +55,7 @@ class Tuner:
         try:
             while process.is_running():
                 cpu_time_usage = sum(process.cpu_times()[:-1])
-                sleep(self.test_sleep_seconds)
+                time.sleep(self.test_sleep_seconds)
         except BaseException:  # pylint:disable=W0718
             pass
         return cpu_time_usage + self.test_sleep_seconds
@@ -74,7 +74,7 @@ class Tuner:
                 if total_sleep >= self.mem_time_limit_seconds:
                     break
                 total_sleep += self.test_sleep_seconds
-                sleep(self.test_sleep_seconds)
+                time.sleep(self.test_sleep_seconds)
         except BaseException:  # pylint:disable=W0718
             pass
         kill_process_tree(process.pid)
@@ -138,13 +138,13 @@ class Tuner:
 
     def __init__(self):
         self.test_sleep_seconds = 0.001
-        self.mem_time_limit_seconds = 1
+        self.mem_time_limit_seconds = 3
         self.folder_path = os.path.join(".", SETTINGS_MANAGER.tuner.tests_folder)
         soft_mkdir(self.folder_path)
 
     async def start(self):
         """Starts tuner"""
-        language_dicts = await DATABASE.find("language")
+        language_dicts = await DATABASE.find("language", {"spec": 6})
 
         languages = [Language(language_dict) for language_dict in language_dicts]
 
@@ -155,6 +155,7 @@ class Tuner:
                     run_offset_seconds,
                     memory_offset_bytes,
                 ) = self._tune_language(language)
+
                 await DATABASE.update_one(
                     "language",
                     {"spec": language.spec},
@@ -167,6 +168,7 @@ class Tuner:
                     },
                 )
             except BaseException as exc:  # pylint:disable=W0718
+                print(exc)
                 await send_alert(
                     "Tuner failure", f"language {language.short_name}\n{str(exc)}"
                 )

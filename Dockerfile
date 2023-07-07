@@ -10,10 +10,14 @@ RUN wget "http://pascalabc.net/downloads/PascalABCNETLinux.zip"
 
 RUN unzip "PascalABCNETLinux.zip" "PascalABCNETLinux/*"
 
-
 RUN echo '#! /bin/sh' >> /bin/pabcnetc
 RUN echo 'mono /pascal/PascalABCNETLinux/pabcnetcclear.exe $1' >> /bin/pabcnetc
 RUN chmod u+x /bin/pabcnetc
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs/ | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN source ~/.bashrc
+
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

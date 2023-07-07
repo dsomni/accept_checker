@@ -8,6 +8,7 @@ from program_languages.java import JAVA_LANGUAGE
 from program_languages.pascal import PASCAL_LANGUAGE
 from program_languages.pypy import PYPY_LANGUAGE
 from program_languages.python import PYTHON_LANGUAGE
+from program_languages.rust import RUST_LANGUAGE
 
 LANGUAGES_MAPPING = {
     "python": PYTHON_LANGUAGE,
@@ -16,6 +17,7 @@ LANGUAGES_MAPPING = {
     "csharp": CSHARP_LANGUAGE,
     "java": JAVA_LANGUAGE,
     "pascal": PASCAL_LANGUAGE,
+    "rust": RUST_LANGUAGE,
 }
 
 

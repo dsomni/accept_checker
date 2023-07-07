@@ -1,4 +1,4 @@
-"""Contains Cpp Language class"""
+"""Contains Pascal Language class"""
 
 from os import path
 
@@ -6,21 +6,21 @@ from os import path
 from program_languages.basic import ProgramLanguage
 
 
-class CppLanguage(ProgramLanguage):
-    """Cpp language class"""
+class RustLanguage(ProgramLanguage):
+    """Pascal language class"""
 
     def __init__(self):
         super().__init__()
-        self.compiler_path: str = "g++"
+        self.compiler_path: str = "rustc"
 
     def get_offset_codes(self):
         return (
-            "int main()\n{\nint a = 0;\nreturn 0;\n }",
-            "int main()\n{\nwhile(true){}\nreturn 0;\n }",
+            "fn main(){let a: i8 = 0;}",
+            "fn main(){loop{}}",
         )
 
     def get_compile_extension(self):
-        return "cpp"
+        return "rs"
 
     def get_run_extension(self):
         return ""
@@ -31,16 +31,18 @@ class CppLanguage(ProgramLanguage):
     def get_cmd_compile(self, folder_path: str, program_name: str):
         return [
             self.compiler_path,
-            "-O2",
-            "-o",
-            path.abspath(path.join(folder_path, program_name)),
+            "-O",
+            "--out-dir",
+            folder_path,
             path.abspath(
                 path.join(folder_path, f"{program_name}.{self.get_compile_extension()}")
             ),
         ]
 
     def get_cmd_run(self, folder_path: str, program_name: str):
-        return [path.abspath(path.join(folder_path, f"{program_name}"))]
+        return [
+            path.abspath(path.join(folder_path, f"{program_name}")),
+        ]
 
 
-CPP_LANGUAGE = CppLanguage()
+RUST_LANGUAGE = RustLanguage()
