@@ -20,6 +20,10 @@ RUN wget "https://go.dev/dl/go1.20.5.linux-amd64.tar.gz" -O go.tar.gz
 RUN tar -C /usr/local -xzf go.tar.gz
 RUN export PATH=$PATH:/usr/local/go/bin
 
+WORKDIR ../node
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+RUN nvm install 20.4
+
 
 WORKDIR ..
 RUN source ~/.bashrc

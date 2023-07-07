@@ -144,7 +144,7 @@ class Tuner:
 
     async def start(self):
         """Starts tuner"""
-        language_dicts = await DATABASE.find("language", {"spec": 7})
+        language_dicts = await DATABASE.find("language")
 
         languages = [Language(language_dict) for language_dict in language_dicts]
 

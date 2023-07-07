@@ -10,6 +10,7 @@ from program_languages.pascal import PASCAL_LANGUAGE
 from program_languages.pypy import PYPY_LANGUAGE
 from program_languages.python import PYTHON_LANGUAGE
 from program_languages.rust import RUST_LANGUAGE
+from program_languages.nodejs import NODEJS_LANGUAGE
 
 LANGUAGES_MAPPING = {
     "python": PYTHON_LANGUAGE,
@@ -20,6 +21,7 @@ LANGUAGES_MAPPING = {
     "pascal": PASCAL_LANGUAGE,
     "rust": RUST_LANGUAGE,
     "go": GO_LANGUAGE,
+    "nodejs": NODEJS_LANGUAGE,
 }
 
 
