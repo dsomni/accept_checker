@@ -52,6 +52,46 @@ class ListenerSettings:
         }
 
 
+class SchedulerSettings:
+    """Scheduler settings class"""
+
+    def __init__(self, scheduler_dict: dict) -> None:
+        self.day_of_week: int = scheduler_dict["day_of_week"]
+        self.hour: int = scheduler_dict["hour"]
+        self.minute: int = scheduler_dict["minute"]
+
+    def as_dict(self) -> dict:
+        """Represents the class instance as dict
+
+        Returns:
+            dict
+        """
+        return {
+            "day_of_week": self.day_of_week,
+            "hour": self.hour,
+            "minute": self.minute,
+        }
+
+
+class TunerSettings:
+    """Tuner settings class"""
+
+    def __init__(self, tuner_dict: dict) -> None:
+        self.scheduler = SchedulerSettings(tuner_dict["scheduler"])
+        self.tests_folder = tuner_dict["tests_folder"]
+
+    def as_dict(self) -> dict:
+        """Represents the class instance as dict
+
+        Returns:
+            dict
+        """
+        return {
+            "scheduler": self.scheduler.as_dict(),
+            "tests_folder": self.tests_folder,
+        }
+
+
 class DefaultLimits:
     """Default checker limits class class"""
 
@@ -94,6 +134,9 @@ class SettingsManager:
             ],
         )
 
+    def _pack_tuner(self):
+        self.tuner = TunerSettings(self._settings["tuner"])
+
     def _pack_limits(self):
         self.limits = DefaultLimits(
             time_seconds=self._settings["default_limits"]["time_seconds"],
@@ -117,6 +160,7 @@ class SettingsManager:
 
         self._pack_listener()
         self._pack_manager()
+        self._pack_tuner()
         self._pack_limits()
 
 

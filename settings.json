@@ -10,5 +10,13 @@
   },
   "manager": {
     "attempts_folder": "programs"
+  },
+  "tuner": {
+    "scheduler": {
+      "day_of_week": 0,
+      "hour": 3,
+      "minute": 0
+    },
+    "tests_folder": "tuner_tests"
   }
 }

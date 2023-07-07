@@ -129,10 +129,6 @@ class CodeChecker(Checker):
                 memory_limit=attempt.constraints.memory << 20,
             )
 
-            # if self._compare_strings(result, attempt.results[index].test.output_data):
-            #     verdict = "OK"
-            # else:
-            #     verdict = "WA"
         except TimeLimitException:
             verdict = "TL"
         except MemoryLimitException:

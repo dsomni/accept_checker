@@ -45,15 +45,8 @@ class CustomProcess:
                     raise MemoryLimitException("Memory Limit")
                 sleep(self.sleep_time)
                 total_sleep += self.sleep_time
-        except psutil.Error as exc:  # pylint:disable=W0718
-            print("psutil.Error", exc)
-            pass
-        # except psutil.Error as exc:
-        #     print(process.is_running())
-        #     if process.is_running():
-        #         raise ServerErrorException("psutil.Error") from exc
-        #
-        #     raise RuntimeErrorException("Runtime error")
+        except psutil.Error:  # pylint:disable=W0718
+            return
 
     def run(
         self,

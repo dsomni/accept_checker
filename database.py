@@ -1,5 +1,6 @@
 """Contains MongoDB database class instances"""
 
+from typing import Optional
 import motor.motor_asyncio
 import asyncio
 
@@ -98,6 +99,31 @@ class Database:
         collection = self.get_collection(collection_name)
 
         return await collection.update_one(match_dict, update_dict, upsert)
+
+    async def find(
+        self,
+        collection_name: str,
+        match_dict: dict = {},
+        filter_dict: Optional[dict] = None,
+    ):
+        """Returns elements from collection
+
+        Args:
+            collection_name (str): collection name
+            match_dict (dict): match dictionary
+            filter_dict (dict): filter dictionary
+
+        Returns:
+            list[dict]: result
+        """
+
+        collection = self.get_collection(collection_name)
+
+        results = []
+        async for result in collection.find(match_dict, filter_dict):
+            results.append(result)
+
+        return results
 
 
 DATABASE = Database()
