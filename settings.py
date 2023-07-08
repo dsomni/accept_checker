@@ -3,6 +3,7 @@ import os
 import json
 
 from utils.soft_mkdir import soft_mkdir
+from typing import Any
 
 
 class ManagerSettings:
@@ -17,7 +18,7 @@ class ManagerSettings:
         soft_mkdir(path)
         self.attempts_folder_path = path
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Represents the class instance as dict
 
         Returns:
@@ -39,7 +40,7 @@ class ListenerSettings:
         self.langs_refetch_timeout_minutes = langs_refetch_timeout_minutes
         self.cpu_utilization_fraction = cpu_utilization_fraction
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Represents the class instance as dict
 
         Returns:
@@ -55,12 +56,12 @@ class ListenerSettings:
 class SchedulerSettings:
     """Scheduler settings class"""
 
-    def __init__(self, scheduler_dict: dict) -> None:
+    def __init__(self, scheduler_dict: dict[str, Any]) -> None:
         self.day_of_week: int = scheduler_dict["day_of_week"]
         self.hour: int = scheduler_dict["hour"]
         self.minute: int = scheduler_dict["minute"]
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Represents the class instance as dict
 
         Returns:
@@ -76,11 +77,12 @@ class SchedulerSettings:
 class TunerSettings:
     """Tuner settings class"""
 
-    def __init__(self, tuner_dict: dict) -> None:
+    def __init__(self, tuner_dict: dict[str, Any]) -> None:
         self.scheduler = SchedulerSettings(tuner_dict["scheduler"])
-        self.tests_folder = tuner_dict["tests_folder"]
+        self.tests_folder: str = tuner_dict["tests_folder"]
+        self.test_runs_count: int = int(tuner_dict["test_runs_count"])
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Represents the class instance as dict
 
         Returns:
@@ -89,6 +91,7 @@ class TunerSettings:
         return {
             "scheduler": self.scheduler.as_dict(),
             "tests_folder": self.tests_folder,
+            "test_runs_count": self.test_runs_count,
         }
 
 
@@ -103,7 +106,7 @@ class DefaultLimits:
         self.time_seconds = time_seconds
         self.memory_mb = memory_mb
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Represents the class instance as dict
 
         Returns:
@@ -145,7 +148,7 @@ class SettingsManager:
 
     def _load_settings(self):
         with open(self._path, encoding="utf8") as json_file:
-            self._settings: dict = json.load(json_file)
+            self._settings: dict[str, Any] = json.load(json_file)
             json_file.close()
 
     def __str__(self) -> str:

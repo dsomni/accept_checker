@@ -1,6 +1,6 @@
 """Contains MongoDB database class instances"""
 
-from typing import Optional
+from typing import Optional, Any, List
 import motor.motor_asyncio
 import asyncio
 
@@ -11,7 +11,7 @@ class Database:
     """Manages database stuff"""
 
     def _connect(self):
-        self.client = motor.motor_asyncio.AsyncIOMotorClient(
+        self.client: Any = motor.motor_asyncio.AsyncIOMotorClient(
             SECRETS_MANAGER.get_connection_string()
         )
         self.client.get_io_loop = asyncio.get_running_loop
@@ -20,7 +20,7 @@ class Database:
     def __init__(self) -> None:
         self._connect()
 
-    def get_collection(self, collection_name: str):
+    def get_collection(self, collection_name: str) -> Any:
         """Returns requested collection
 
         Args:
@@ -30,7 +30,7 @@ class Database:
         return self.database[collection_name]
 
     async def find_one(
-        self, collection_name: str, match_dict: dict, filter_dict: Optional[dict] = None
+        self, collection_name: str, match_dict: dict[str, Any], filter_dict: Optional[dict[str, Any]] = None
     ):
         """Returns one element from collection
 
@@ -47,7 +47,7 @@ class Database:
 
         return await collection.find_one(match_dict, filter_dict)
 
-    async def delete_one(self, collection_name: str, match_dict: dict):
+    async def delete_one(self, collection_name: str, match_dict: dict[str, Any]):
         """Deletes one element from collection
 
         Args:
@@ -62,7 +62,7 @@ class Database:
 
         return await collection.delete_one(match_dict)
 
-    async def insert_one(self, collection_name: str, element: dict):
+    async def insert_one(self, collection_name: str, element: dict[str, Any]):
         """Inserts one element to collection
 
         Args:
@@ -80,10 +80,10 @@ class Database:
     async def update_one(
         self,
         collection_name: str,
-        match_dict: dict,
-        update_dict: dict,
+        match_dict: dict[str, Any],
+        update_dict: dict[str, Any],
         upsert: bool = False,
-    ):
+    ) -> Any:
         """Updates one element from collection
 
         Args:
@@ -103,9 +103,9 @@ class Database:
     async def find(
         self,
         collection_name: str,
-        match_dict: dict = {},
-        filter_dict: Optional[dict] = None,
-    ):
+        match_dict: dict[str, Any] = {},
+        filter_dict: Optional[dict[str, Any]] = None,
+    ) -> List[Any]:
         """Returns elements from collection
 
         Args:
@@ -119,7 +119,7 @@ class Database:
 
         collection = self.get_collection(collection_name)
 
-        results = []
+        results: Any = []
         async for result in collection.find(match_dict, filter_dict):
             results.append(result)
 

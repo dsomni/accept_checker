@@ -5,7 +5,7 @@ import asyncio
 from math import floor
 
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, Callable, Coroutine
 from checker.custom_checker import CustomChecker
 from checker.tests import TestsChecker
 from checker.text import TextChecker
@@ -26,9 +26,9 @@ from database import DATABASE
 from settings import SETTINGS_MANAGER
 
 
-def _soft_run(func):
+def _soft_run(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any]]:
     async def inner(
-        self, attempt: Attempt, author_login: str, task_spec: str, *args, **kwargs
+        self: Manager, attempt: Attempt, author_login: str, task_spec: str, *args: Tuple[Any, ...], **kwargs: dict[str, Any]
     ):
         try:
             await func(
@@ -174,7 +174,7 @@ class Manager:
         else:
             new_best_attempt = current_attempt
 
-        database_actions = []
+        database_actions: Any = []
 
         if (not best_attempt or best_attempt["verdict"] != 0) and new_best_attempt[
             "verdict"
@@ -250,7 +250,7 @@ class Manager:
         constraints = attempt.constraints
         return constraints.time, constraints.memory
 
-    def _get_offsets(self, language_dict: dict) -> Tuple[float, float, float]:
+    def _get_offsets(self, language_dict: dict[str, Any]) -> Tuple[float, float, float]:
         return (
             language_dict["compileOffset"],
             language_dict["runOffset"],

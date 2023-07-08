@@ -4,6 +4,7 @@ from os import path
 
 
 from program_languages.basic import ProgramLanguage
+from typing import Any
 
 
 class PascalLanguage(ProgramLanguage):
@@ -25,7 +26,7 @@ class PascalLanguage(ProgramLanguage):
     def get_run_extension(self):
         return "exe"
 
-    def get_memory_usage(self, memory_info):
+    def get_memory_usage(self, memory_info: Any):
         return memory_info.data
 
     def get_cmd_compile(self, folder_path: str, program_name: str):

@@ -4,6 +4,7 @@ from os import path
 
 
 from program_languages.basic import ProgramLanguage
+from typing import Any
 
 
 class JavaLanguage(ProgramLanguage):
@@ -25,7 +26,7 @@ class JavaLanguage(ProgramLanguage):
     def get_run_extension(self):
         return "java"
 
-    def get_memory_usage(self, memory_info):
+    def get_memory_usage(self, memory_info: Any):
         # print(f"{memory_info.data=}\n{memory_info.rss=}")
         return memory_info.rss
 

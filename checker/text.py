@@ -23,7 +23,7 @@ class TextChecker(Checker):
         """
 
         user_answers_length = len(user_answers)
-        verdicts = []
+        verdicts: List[int] = []
         for i, correct_answer in enumerate(correct_answers):
             if i >= user_answers_length:
                 verdict = "WA"

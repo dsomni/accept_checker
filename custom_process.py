@@ -3,7 +3,7 @@
 from time import sleep
 import subprocess
 import concurrent.futures as pool
-from typing import List
+from typing import List, Callable, Any
 import psutil
 from custom_exceptions import (
     MemoryLimitException,
@@ -21,7 +21,7 @@ DEFAULT_TIME_LIMIT_SECONDS = SETTINGS_MANAGER.limits.time_seconds
 class CustomProcess:
     """Custom Process class"""
 
-    def __init__(self, cmd: List[str], get_memory_usage):
+    def __init__(self, cmd: List[str], get_memory_usage: Callable[[Any], float]):
         self.cmd = cmd
         self.get_memory_usage = get_memory_usage
 

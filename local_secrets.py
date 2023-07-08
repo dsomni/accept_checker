@@ -2,6 +2,7 @@
 
 import os
 import dotenv
+from typing import Any
 
 
 class SecretsManager:
@@ -9,7 +10,7 @@ class SecretsManager:
 
     def __init__(self, path: str = os.path.join(".", ".env")) -> None:
         self._path = path
-        self._secrets = dotenv.dotenv_values(self._path)
+        self._secrets: dict[str, Any] = dotenv.dotenv_values(self._path)
         self._mongodb_connection_string: str = self._secrets["CONNECTION_STRING"]  # type: ignore
 
     def get_connection_string(self) -> str:

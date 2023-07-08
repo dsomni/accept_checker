@@ -1,6 +1,6 @@
 """Contains Basic Language class"""
 
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 
 class ProgramLanguage:
@@ -33,7 +33,7 @@ class ProgramLanguage:
 
         raise NotImplementedError
 
-    def get_memory_usage(self, memory_info) -> float:
+    def get_memory_usage(self, memory_info: Any) -> float:
         """Returns memory usage of the program in bytes
 
         Args:

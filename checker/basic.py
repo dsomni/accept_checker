@@ -3,7 +3,7 @@
 from itertools import zip_longest
 import os
 import concurrent.futures as pool
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 from program_languages.basic import ProgramLanguage
 from custom_exceptions import (
     CompilationErrorException,
@@ -52,7 +52,7 @@ class Checker:
 class CodeChecker(Checker):
     """Code checker basic class"""
 
-    async def start(self):
+    async def start(self) -> Tuple[List[int], List[str]]:
         raise NotImplementedError
 
     def write_program_text(
@@ -198,7 +198,7 @@ class CodeChecker(Checker):
                 for _ in range(len(attempt.results))
             ]
 
-            pool_processes = []
+            pool_processes: List[Any] = []
             for index, process in enumerate(processes):
                 pool_processes.append(
                     executor.submit(
