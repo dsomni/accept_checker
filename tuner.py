@@ -82,28 +82,38 @@ class Tuner:
         return memory_usage
 
     def _run_cmd_test(
-        self, cmd: List[str], test_function: Callable, language_class: ProgramLanguage
+        self, cmd: List[str], test_function: Callable[[psutil.Popen, ProgramLanguage], float], language_class: ProgramLanguage
     ) -> float:
-        process = psutil.Popen(
-            cmd,
-            text=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf8",
-        )
+        def run_test() -> float:
+            process = psutil.Popen(
+                cmd,
+                text=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf8",
+            )
 
-        with pool.ThreadPoolExecutor(max_workers=2) as executor:
-            info = executor.submit(test_function, process, language_class)
-            executor.submit(process.wait)
+            with pool.ThreadPoolExecutor(max_workers=2) as executor:
+                info = executor.submit(test_function, process, language_class)
+                executor.submit(process.wait)
 
-        info_result = info.result()
-        kill_process_tree(process.pid)
+            info_result = info.result()
+            kill_process_tree(process.pid)
 
-        return info_result
+            return info_result
+        test_runs: List[float] = []
+        for _ in range(self.test_runs_count):
+            test_runs.append(run_test())
+
+        mx = max(test_runs)
+        test_runs.remove(mx)
+        print(f"max: {mx} \t second_max: {max(test_runs)}")
+        return max(test_runs)
+
 
     def _run_test(
-        self, source_code: str, test_function: Callable, language_class: ProgramLanguage
+        self, source_code: str, test_function: Callable[[psutil.Popen, ProgramLanguage], float], language_class: ProgramLanguage
     ) -> Tuple[Any, Any]:
         file_name = self._write_program(source_code, language_class)
 
@@ -139,12 +149,14 @@ class Tuner:
     def __init__(self):
         self.test_sleep_seconds = 0.001
         self.mem_time_limit_seconds = 3
+        self.test_runs_count = SETTINGS_MANAGER.tuner.test_runs_count
         self.folder_path = os.path.join(".", SETTINGS_MANAGER.tuner.tests_folder)
         soft_mkdir(self.folder_path)
 
     async def start(self):
         """Starts tuner"""
         language_dicts = await DATABASE.find("language")
+        # language_dicts = [await DATABASE.find_one("language", {"spec": 1})]
 
         languages = [Language(language_dict) for language_dict in language_dicts]
 
@@ -168,7 +180,6 @@ class Tuner:
                     },
                 )
             except BaseException as exc:  # pylint:disable=W0718
-                print(exc)
                 await send_alert(
                     "Tuner failure", f"language {language.short_name}\n{str(exc)}"
                 )
