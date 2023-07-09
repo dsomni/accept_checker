@@ -178,7 +178,7 @@ class Tuner:
                     {"spec": language.spec},
                     {
                         "$set": {
-                            "compileOffset": round(compile_offset_seconds, 5),
+                            "compileOffset": 3 * round(compile_offset_seconds, 5),
                             "runOffset": round(run_offset_seconds, 5),
                             "memOffset": memory_offset_bytes,
                             "last_tune": DATE_TIME_INFO.get_datetime_now_formatted(
