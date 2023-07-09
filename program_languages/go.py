@@ -1,14 +1,14 @@
 """Contains Go Language class"""
 
 from os import path
-
-
-from program_languages.basic import ProgramLanguage
 from typing import Any
 
 
+from program_languages.basic import ProgramLanguage
+
+
 class GoLanguage(ProgramLanguage):
-    """Pascal language class"""
+    """Go language class"""
 
     def __init__(self):
         super().__init__()

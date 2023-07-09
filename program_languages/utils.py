@@ -4,6 +4,7 @@
 from program_languages.basic import ProgramLanguage
 from program_languages.cpp import CPP_LANGUAGE
 from program_languages.csharp import CSHARP_LANGUAGE
+from program_languages.fortran import FORTRAN_LANGUAGE
 from program_languages.go import GO_LANGUAGE
 from program_languages.java import JAVA_LANGUAGE
 from program_languages.lua import LUA_LANGUAGE
@@ -28,6 +29,7 @@ LANGUAGES_MAPPING = {
     "lua": LUA_LANGUAGE,
     "cobol": COBOL_LANGUAGE,
     "haskell": HASKELL_LANGUAGE,
+    "fortran": FORTRAN_LANGUAGE,
 }
 
 

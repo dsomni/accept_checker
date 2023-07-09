@@ -1,10 +1,9 @@
 """Contains Java Language class"""
 
 from os import path
-
+from typing import Any
 
 from program_languages.basic import ProgramLanguage
-from typing import Any
 
 
 class JavaLanguage(ProgramLanguage):

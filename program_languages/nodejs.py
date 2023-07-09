@@ -1,14 +1,13 @@
 """Contains NodeJS Language class"""
 
 from os import path
-
+from typing import Any
 
 from program_languages.basic import ProgramLanguage
-from typing import Any
 
 
 class NodeJSLanguage(ProgramLanguage):
-    """Pascal language class"""
+    """Node.js language class"""
 
     def __init__(self):
         super().__init__()

@@ -1,14 +1,13 @@
 """Contains C# Language class"""
 
 from os import path
-
+from typing import Any
 
 from program_languages.basic import ProgramLanguage
-from typing import Any
 
 
 class CSharpLanguage(ProgramLanguage):
-    """Cpp language class"""
+    """C# language class"""
 
     def __init__(self):
         super().__init__()

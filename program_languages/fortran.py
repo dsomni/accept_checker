@@ -6,21 +6,32 @@ from typing import Any
 from program_languages.basic import ProgramLanguage
 
 
-class RustLanguage(ProgramLanguage):
-    """Rust language class"""
+class FortranLanguage(ProgramLanguage):
+    """Fortran language class"""
 
     def __init__(self):
         super().__init__()
-        self.compiler_path: str = "rustc"
+        self.compiler_path: str = "gfortran"
 
     def get_offset_codes(self):
+        time_offset_code = "program hello\n\tinteger :: a\n\ta = 10\nend program hello"
+
+        memory_offset_code = (
+            "program hello\n"
+            "\tinteger :: a\n"
+            "\tdo while (1 == 1)\n"
+            "\t\ta = 10\n"
+            "\tend do\n"
+            "end program hello"
+        )
+
         return (
-            "fn main(){let a: i8 = 0;}",
-            "fn main(){loop{}}",
+            time_offset_code,
+            memory_offset_code,
         )
 
     def get_compile_extension(self):
-        return "rs"
+        return "f90"
 
     def get_run_extension(self):
         return ""
@@ -31,12 +42,11 @@ class RustLanguage(ProgramLanguage):
     def get_cmd_compile(self, folder_path: str, program_name: str):
         return [
             self.compiler_path,
-            "-O",
-            "--out-dir",
-            folder_path,
             path.abspath(
                 path.join(folder_path, f"{program_name}.{self.get_compile_extension()}")
             ),
+            "-o",
+            path.abspath(path.join(folder_path, f"{program_name}")),
         ]
 
     def get_cmd_run(self, folder_path: str, program_name: str):
@@ -45,4 +55,4 @@ class RustLanguage(ProgramLanguage):
         ]
 
 
-RUST_LANGUAGE = RustLanguage()
+FORTRAN_LANGUAGE = FortranLanguage()

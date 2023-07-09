@@ -1,10 +1,9 @@
 """Contains Cpp Language class"""
 
 from os import path
-
+from typing import Any
 
 from program_languages.basic import ProgramLanguage
-from typing import Any
 
 
 class HaskellLanguage(ProgramLanguage):
@@ -16,7 +15,7 @@ class HaskellLanguage(ProgramLanguage):
 
     def get_offset_codes(self):
         return (
-            "main :: IO ()\nmain = putStrLn \"Hello, World!\"",
+            'main :: IO ()\nmain = putStrLn "Hello, World!"',
             "infi=infi\nmain = infi",
         )
 

@@ -1,14 +1,13 @@
 """Contains Lua Language class"""
 
 from os import path
-
+from typing import Any
 
 from program_languages.basic import ProgramLanguage
-from typing import Any
 
 
 class LuaLanguage(ProgramLanguage):
-    """Pascal language class"""
+    """Lua language class"""
 
     def __init__(self):
         super().__init__()
