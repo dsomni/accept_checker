@@ -1,8 +1,25 @@
 FROM python:3.10.8-slim-buster AS runner
 
+RUN apt-get clean all
 RUN apt-get update
+
+RUN apt-get install -y unzip wget
+# pascal
+RUN apt-get install -y mono-complete mono-devel
+# c++
+RUN apt-get install -y gcc g++
+# java
 RUN apt-get install -y openjdk-11-jdk openjdk-11-jre
-RUN apt-get install -y gcc g++ mono-complete mono-devel pypy3 unzip wget lua5.3 gnucobol ghc ghc-prof ghc-doc gfortran
+# pypy
+RUN apt-get install -y pypy3
+# lua
+RUN apt-get install -y lua5.3
+# cobol
+RUN apt-get install -y gnucobol
+# haskell
+RUN apt-get install -y ghc ghc-prof ghc-doc
+# fortran
+RUN apt-get install -y gfortran
 
 WORKDIR /pascal
 RUN wget "http://pascalabc.net/downloads/PascalABCNETLinux.zip"
