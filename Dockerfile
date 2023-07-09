@@ -2,7 +2,7 @@ FROM python:3.10.8-slim-buster AS runner
 
 RUN apt-get update
 RUN apt-get install -y openjdk-11-jdk openjdk-11-jre
-RUN apt-get install -y gcc g++ mono-complete mono-devel pypy3 unzip wget lua5.4 gnucobol ghc ghc-prof ghc-doc gfortran
+RUN apt-get install -y gcc g++ mono-complete mono-devel pypy3 unzip wget lua5.3 gnucobol ghc ghc-prof ghc-doc gfortran
 
 WORKDIR /pascal
 RUN wget "http://pascalabc.net/downloads/PascalABCNETLinux.zip"
@@ -21,12 +21,11 @@ RUN tar -C /usr/local -xzf go.tar.gz
 RUN export PATH=$PATH:/usr/local/go/bin
 
 WORKDIR ../node
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-RUN nvm install 20.4
-
+RUN wget "https://nodejs.org/dist/v18.16.1/node-v18.16.1-linux-x64.tar.xz"
+RUN tar -xf node-v18.16.1-linux-x64.tar.xz
+RUN mv node-v18.16.1-linux-x64/bin/node /bin/node
 
 WORKDIR ..
-RUN source ~/.bashrc
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 

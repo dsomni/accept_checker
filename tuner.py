@@ -178,8 +178,8 @@ class Tuner:
                     {"spec": language.spec},
                     {
                         "$set": {
-                            "compileOffset": compile_offset_seconds,
-                            "runOffset": run_offset_seconds,
+                            "compileOffset": round(compile_offset_seconds, 5),
+                            "runOffset": round(run_offset_seconds, 5),
                             "memOffset": memory_offset_bytes,
                             "last_tune": DATE_TIME_INFO.get_datetime_now_formatted(
                                 "%d.%m.%Y %H:%M:%S"
