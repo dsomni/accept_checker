@@ -10,6 +10,7 @@ import time
 import psutil
 import asyncio
 from database import DATABASE
+from date import DATE_TIME_INFO
 from program_languages.basic import ProgramLanguage
 from program_languages.utils import get_language_class
 from models import Language
@@ -54,7 +55,7 @@ class Tuner:
         cpu_time_usage = 0
         try:
             while process.is_running():
-                cpu_time_usage = sum(process.cpu_times()[:-1])
+                cpu_time_usage = sum(process.cpu_times()[:-1])  # type: ignore
                 time.sleep(self.test_sleep_seconds)
         except BaseException:  # pylint:disable=W0718
             pass
@@ -82,7 +83,10 @@ class Tuner:
         return memory_usage
 
     def _run_cmd_test(
-        self, cmd: List[str], test_function: Callable[[psutil.Popen, ProgramLanguage], float], language_class: ProgramLanguage
+        self,
+        cmd: List[str],
+        test_function: Callable[[psutil.Popen, ProgramLanguage], float],
+        language_class: ProgramLanguage,
     ) -> float:
         def run_test() -> float:
             process = psutil.Popen(
@@ -102,17 +106,20 @@ class Tuner:
             kill_process_tree(process.pid)
 
             return info_result
+
         test_runs: List[float] = []
         for _ in range(self.test_runs_count):
             test_runs.append(run_test())
 
-        mx = max(test_runs)
-        test_runs.remove(mx)
-        return max(test_runs)
-
+        max_value = max(test_runs)
+        test_runs.remove(max_value)
+        return max(test_runs)  # takes the second max
 
     def _run_test(
-        self, source_code: str, test_function: Callable[[psutil.Popen, ProgramLanguage], float], language_class: ProgramLanguage
+        self,
+        source_code: str,
+        test_function: Callable[[psutil.Popen, ProgramLanguage], float],
+        language_class: ProgramLanguage,
     ) -> Tuple[Any, Any]:
         file_name = self._write_program(source_code, language_class)
 
@@ -155,7 +162,6 @@ class Tuner:
     async def start(self):
         """Starts tuner"""
         language_dicts = await DATABASE.find("language")
-        # language_dicts = [await DATABASE.find_one("language", {"spec": 11})]
 
         languages = [Language(language_dict) for language_dict in language_dicts]
 
@@ -175,6 +181,9 @@ class Tuner:
                             "compileOffset": compile_offset_seconds,
                             "runOffset": run_offset_seconds,
                             "memOffset": memory_offset_bytes,
+                            "last_tune": DATE_TIME_INFO.get_datetime_now_formatted(
+                                "%d.%m.%Y %H:%M:%S"
+                            ),
                         }
                     },
                 )

@@ -5,7 +5,7 @@ import asyncio
 from math import floor
 
 import os
-from typing import List, Optional, Tuple, Any, Callable, Coroutine
+from typing import Dict, List, Optional, Tuple, Any, Callable, Coroutine
 from checker.custom_checker import CustomChecker
 from checker.tests import TestsChecker
 from checker.text import TextChecker
@@ -28,7 +28,12 @@ from settings import SETTINGS_MANAGER
 
 def _soft_run(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any]]:
     async def inner(
-        self: Manager, attempt: Attempt, author_login: str, task_spec: str, *args: Tuple[Any, ...], **kwargs: dict[str, Any]
+        self,
+        attempt: Attempt,
+        author_login: str,
+        task_spec: str,
+        *args: Tuple[Any, ...],
+        **kwargs: Dict[str, Any],
     ):
         try:
             await func(
@@ -45,10 +50,9 @@ def _soft_run(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any
             # TODO: delete folder
             try:
                 await self._save_results(  # pylint:disable=W0212:protected-access
-                    attempt.spec,
+                    attempt,
                     author_login,
                     task_spec,
-                    results,
                     generate_tests_verdicts("SE", len(results)),
                     [str(manager_exc)],
                 )
@@ -250,7 +254,7 @@ class Manager:
         constraints = attempt.constraints
         return constraints.time, constraints.memory
 
-    def _get_offsets(self, language_dict: dict[str, Any]) -> Tuple[float, float, float]:
+    def _get_offsets(self, language_dict: Dict[str, Any]) -> Tuple[float, float, float]:
         return (
             language_dict["compileOffset"],
             language_dict["runOffset"],

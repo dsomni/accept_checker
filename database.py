@@ -1,6 +1,6 @@
 """Contains MongoDB database class instances"""
 
-from typing import Optional, Any, List
+from typing import Dict, Optional, Any, List
 import motor.motor_asyncio
 import asyncio
 
@@ -30,7 +30,10 @@ class Database:
         return self.database[collection_name]
 
     async def find_one(
-        self, collection_name: str, match_dict: dict[str, Any], filter_dict: Optional[dict[str, Any]] = None
+        self,
+        collection_name: str,
+        match_dict: Dict[str, Any],
+        filter_dict: Optional[Dict[str, Any]] = None,
     ):
         """Returns one element from collection
 
@@ -47,7 +50,7 @@ class Database:
 
         return await collection.find_one(match_dict, filter_dict)
 
-    async def delete_one(self, collection_name: str, match_dict: dict[str, Any]):
+    async def delete_one(self, collection_name: str, match_dict: Dict[str, Any]):
         """Deletes one element from collection
 
         Args:
@@ -62,7 +65,7 @@ class Database:
 
         return await collection.delete_one(match_dict)
 
-    async def insert_one(self, collection_name: str, element: dict[str, Any]):
+    async def insert_one(self, collection_name: str, element: Dict[str, Any]):
         """Inserts one element to collection
 
         Args:
@@ -80,8 +83,8 @@ class Database:
     async def update_one(
         self,
         collection_name: str,
-        match_dict: dict[str, Any],
-        update_dict: dict[str, Any],
+        match_dict: Dict[str, Any],
+        update_dict: Dict[str, Any],
         upsert: bool = False,
     ) -> Any:
         """Updates one element from collection
@@ -103,8 +106,8 @@ class Database:
     async def find(
         self,
         collection_name: str,
-        match_dict: dict[str, Any] = {},
-        filter_dict: Optional[dict[str, Any]] = None,
+        match_dict: Dict[str, Any] = {},
+        filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
         """Returns elements from collection
 

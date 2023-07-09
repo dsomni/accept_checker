@@ -2,7 +2,7 @@ FROM python:3.10.8-slim-buster AS runner
 
 RUN apt-get update
 RUN apt-get install -y openjdk-11-jdk openjdk-11-jre
-RUN apt-get install -y gcc g++ mono-complete mono-devel pypy3 unzip wget lua5.4 gnucobol ghc6 ghc6-prof ghc6-doc
+RUN apt-get install -y gcc g++ mono-complete mono-devel pypy3 unzip wget lua5.4 gnucobol ghc ghc-prof ghc-doc
 
 WORKDIR /pascal
 RUN wget "http://pascalabc.net/downloads/PascalABCNETLinux.zip"

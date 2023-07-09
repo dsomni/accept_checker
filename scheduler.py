@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 import pytz
+from date import DATE_TIME_INFO
 
 
 from settings import SETTINGS_MANAGER
@@ -27,8 +28,8 @@ class Scheduler:
             ),
         )
 
-    def __init__(self, timezone_region: str = "Europe/Moscow") -> None:
-        self._tz = pytz.timezone(timezone_region)
+    def __init__(self) -> None:
+        self._tz = DATE_TIME_INFO.tz
 
         self.scheduler = AsyncIOScheduler(
             timezone=self._tz,
