@@ -108,7 +108,6 @@ class Tuner:
 
         mx = max(test_runs)
         test_runs.remove(mx)
-        print(f"max: {mx} \t second_max: {max(test_runs)}")
         return max(test_runs)
 
 
@@ -156,7 +155,7 @@ class Tuner:
     async def start(self):
         """Starts tuner"""
         language_dicts = await DATABASE.find("language")
-        # language_dicts = [await DATABASE.find_one("language", {"spec": 1})]
+        # language_dicts = [await DATABASE.find_one("language", {"spec": 11})]
 
         languages = [Language(language_dict) for language_dict in language_dicts]
 

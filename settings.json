@@ -18,6 +18,6 @@
       "minute": 0
     },
     "tests_folder": "tuner_tests",
-    "test_runs_count": 10
+    "test_runs_count": 5
   }
 }
